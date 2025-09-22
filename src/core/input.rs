@@ -9,11 +9,13 @@ struct KeyState {
 }
 
 pub struct InputHandler {
-    key_states: HashMap<Key, KeyState>, // true = pressed, false = released
-    pub last_x: f32,
-    pub last_y: f32,
+    key_states: HashMap<Key, KeyState>,
     first_mouse: bool,
     scroll_delta: f32,
+    mouse_delta_x: f32,
+    mouse_delta_y: f32,
+    pub last_x: f32,
+    pub last_y: f32,
 }
 
 #[allow(dead_code)]
@@ -21,10 +23,12 @@ impl InputHandler {
     pub fn new() -> Self {
         InputHandler {
             key_states: HashMap::new(),
+            first_mouse: true,
+            scroll_delta: 0.0,
+            mouse_delta_x: 0.0,
+            mouse_delta_y: 0.0,
             last_x: 0.0,
             last_y: 0.0,
-            scroll_delta: 0.0,
-            first_mouse: true,
         }
     }
 
@@ -50,11 +54,20 @@ impl InputHandler {
                 }
             }
             WindowEvent::CursorPos(x, y) => {
+                let xpos = *x as f32;
+                let ypos = *y as f32;
+
                 if self.first_mouse {
                     self.last_x = *x as f32;
                     self.last_y = *y as f32;
                     self.first_mouse = false;
                 }
+
+                self.mouse_delta_x += xpos - self.last_x;
+                self.mouse_delta_y += self.last_y - ypos;
+
+                self.last_x = xpos;
+                self.last_y = ypos;
             }
             WindowEvent::Scroll(_, y) => {
                 self.scroll_delta = *y as f32;
@@ -68,7 +81,10 @@ impl InputHandler {
             state.just_pressed = false;
             state.just_released = false;
         }
+
         self.scroll_delta = 0.0;
+        self.mouse_delta_x = 0.0;
+        self.mouse_delta_y = 0.0;
     }
 
     pub fn is_key_pressed(&self, key: Key) -> bool {
@@ -83,14 +99,8 @@ impl InputHandler {
         self.key_states.get(&key).map_or(false, |s| s.just_released)
     }
 
-    pub fn get_mouse_movement(&mut self, xpos: f64, ypos: f64) -> (f32, f32) {
-        let x_offset = xpos as f32 - self.last_x;
-        let y_offset = self.last_y - ypos as f32;
-
-        self.last_x = xpos as f32;
-        self.last_y = ypos as f32;
-
-        (x_offset, y_offset)
+    pub fn get_mouse_delta(&self) -> (f32, f32) {
+        (self.mouse_delta_x, self.mouse_delta_y)
     }
 
     pub fn get_scroll_delta(&self) -> f32 {

@@ -11,7 +11,7 @@ use crate::glutils::{
 };
 
 use crate::core::frame_context::FrameContext;
-use crate::camera::{Camera, CameraMovement};
+use crate::camera::Camera;
 use crate::graphics::cuboid_renderer::CuboidRenderer;
 use crate::world::entity::Entity;
 use crate::world::scene::Scene;
@@ -141,12 +141,8 @@ impl Application {
                 input: &self.input
             };
 
+            self.camera.update(&frame_context);
             self.scene.update(&frame_context);
-
-            let (xpos, ypos) = self.window.get_cursor_pos();
-            let (x_offset, y_offset) = self.input.get_mouse_movement(xpos, ypos);
-            self.camera.process_mouse_movement(x_offset, y_offset, true);
-            self.camera.process_mouse_scroll(self.input.get_scroll_delta());
             self.input.end_frame();
 
             // Render
@@ -188,20 +184,6 @@ impl Application {
     fn process_input(&mut self) {
         if self.input.is_key_pressed(Key::Escape) {
             self.window.set_should_close(true)
-        }
-
-        if self.input.is_key_pressed(Key::W) {
-            self.camera.process_keyboard(CameraMovement::FORWARD, self.time.delta_time());
-        }
-        if self.input.is_key_pressed(Key::S) {
-            self.camera.process_keyboard(CameraMovement::BACKWARD, self.time.delta_time());
-        }
-
-        if self.input.is_key_pressed(Key::A) {
-            self.camera.process_keyboard(CameraMovement::LEFT, self.time.delta_time());
-        }
-        if self.input.is_key_pressed(Key::D) {
-            self.camera.process_keyboard(CameraMovement::RIGHT, self.time.delta_time());
         }
     }
 }

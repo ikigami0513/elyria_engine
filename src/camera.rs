@@ -1,18 +1,13 @@
 use cgmath;
 use cgmath::vec3;
 use cgmath::prelude::*;
+use glfw::Key;
+
+use crate::core::frame_context::FrameContext;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
 type Matrix4 = cgmath::Matrix4<f32>;
-
-#[derive(PartialEq, Clone, Copy)]
-pub enum CameraMovement {
-    FORWARD,
-    BACKWARD,
-    LEFT,
-    RIGHT
-}
 
 const YAW: f32 = -90.0;
 const PITCH: f32 = 0.0;
@@ -31,6 +26,7 @@ pub struct Camera {
     // Euler Angles
     pub yaw: f32,
     pub pitch: f32,
+    pub constrain_pitch: bool,
 
     // Camera options
     pub movement_speed: f32,
@@ -48,6 +44,7 @@ impl Default for Camera {
             world_up: Vector3::unit_y(),
             yaw: YAW,
             pitch: PITCH,
+            constrain_pitch: true,
             movement_speed: SPEED,
             mouse_sensitivity: SENSITIVTY,
             zoom: ZOOM
@@ -62,32 +59,41 @@ impl Camera {
         Matrix4::look_at(self.position, self.position + self.front, self.up)
     }
 
-    pub fn process_keyboard(&mut self, direction: CameraMovement, delta_time: f32) {
-        let velocity = self.movement_speed * delta_time;
+    pub fn update(&mut self, ctx: &FrameContext) {
+        let velocity = self.movement_speed * ctx.time.delta_time();
 
-        if direction == CameraMovement::FORWARD {
+        if ctx.input.is_key_pressed(Key::W) {
             self.position += self.front * velocity;
         }
-        if direction == CameraMovement::BACKWARD {
+        if ctx.input.is_key_pressed(Key::S) {
             self.position += -(self.front * velocity);
         }
 
-        if direction == CameraMovement::LEFT {
+        if ctx.input.is_key_pressed(Key::A) {
             self.position += -(self.right * velocity);
         }
-        if direction == CameraMovement::RIGHT {
+        if ctx.input.is_key_pressed(Key::D) {
             self.position += self.right * velocity;
         }
-    }
 
-    pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32, constrain_pitch: bool) {
+        if self.zoom >= 1.0 && self.zoom <= 45.0 {
+            self.zoom -= ctx.input.get_scroll_delta();
+        }
+        if self.zoom <= 1.0 {
+            self.zoom = 1.0;
+        }
+        if self.zoom >= 45.0 {
+            self.zoom = 45.0;
+        }
+
+        let (mut xoffset, mut yoffset) = ctx.input.get_mouse_delta();
         xoffset *= self.mouse_sensitivity;
         yoffset *= self.mouse_sensitivity;
 
         self.yaw += xoffset;
         self.pitch += yoffset;
 
-        if constrain_pitch {
+        if self.constrain_pitch {
             if self.pitch > 89.0 {
                 self.pitch = 89.0;
             }
@@ -97,18 +103,6 @@ impl Camera {
         }
 
         self.update_camera_vectors();
-    }
-
-    pub fn process_mouse_scroll(&mut self, yoffset: f32) {
-        if self.zoom >= 1.0 && self.zoom <= 45.0 {
-            self.zoom -= yoffset;
-        }
-        if self.zoom <= 1.0 {
-            self.zoom = 1.0;
-        }
-        if self.zoom >= 45.0 {
-            self.zoom = 45.0;
-        }
     }
 
     fn update_camera_vectors(&mut self) {
