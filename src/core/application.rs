@@ -10,6 +10,7 @@ use crate::glutils::{
     shader::Shader
 };
 
+use crate::core::frame_context::FrameContext;
 use crate::camera::{Camera, CameraMovement};
 use crate::graphics::cuboid_renderer::CuboidRenderer;
 use crate::world::entity::Entity;
@@ -121,7 +122,12 @@ impl Application {
             self.process_events();
             self.process_input();
 
-            self.scene.update();
+            let frame_context = FrameContext {
+                time: &self.time,
+                input: &self.input
+            };
+
+            self.scene.update(&frame_context);
 
             let (xpos, ypos) = self.window.get_cursor_pos();
             let (x_offset, y_offset) = self.input.get_mouse_movement(xpos, ypos);

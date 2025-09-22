@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use crate::core::frame_context::FrameContext;
 use crate::glutils::shader::Shader;
 use crate::world::entity::Entity;
 
@@ -18,8 +19,8 @@ impl Scene {
         self.root.clone()
     }
 
-    pub fn update(&mut self) {
-        Entity::update(&self.root);
+    pub fn update(&mut self, ctx: &FrameContext) {
+        Entity::update(&self.root, ctx);
     }
 
     pub fn render(&mut self, shader: &Shader) {

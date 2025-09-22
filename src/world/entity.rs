@@ -1,6 +1,7 @@
 use std::collections::LinkedList;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
+use crate::core::frame_context::FrameContext;
 use crate::glutils::shader::Shader;
 use crate::math::transform::Transform;
 use crate::world::component::Component;
@@ -36,7 +37,7 @@ impl Entity {
         parent.borrow_mut().children.push_back(child);
     }
 
-    pub fn update(entity_rc: &Rc<RefCell<Entity>>) {
+    pub fn update(entity_rc: &Rc<RefCell<Entity>>, ctx: &FrameContext) {
         let mut entity_borrow = entity_rc.borrow_mut();
 
         // Si l'entité est "sale", forcez la mise à jour de sa transformation.
@@ -53,7 +54,7 @@ impl Entity {
             drop(entity_borrow); 
             
             for child_rc in entity_rc.borrow().children.iter() {
-                Self::update(child_rc);
+                Self::update(child_rc, ctx);
             }
             return;
         }
@@ -63,11 +64,11 @@ impl Entity {
         drop(entity_borrow);
         
         for component in entity_rc.borrow().components.iter() {
-            component.update(entity_rc);
+            component.update(entity_rc, ctx);
         }
 
         for child_rc in entity_rc.borrow().children.iter() {
-            Self::update(child_rc);
+            Self::update(child_rc, ctx);
         }
     }
     

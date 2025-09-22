@@ -91,11 +91,6 @@ impl CuboidRenderer {
 }
 
 impl Component for CuboidRenderer {
-    #[allow(unused_variables)]
-    fn update(&self, owner: &Rc<RefCell<Entity>>) {
-
-    }
-
     fn render(&self, owner: &Rc<RefCell<Entity>>, shader: &Shader) {
         unsafe {
             shader.use_program();
