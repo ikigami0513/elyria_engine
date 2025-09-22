@@ -44,6 +44,20 @@ impl Application {
         let (mut window, events) = glfw.create_window(width, height, title, glfw::WindowMode::Windowed)
             .expect("Failed to create GLFW window");
 
+        let (xpos, ypos) = glfw.with_primary_monitor(|_glfw, monitor_opt| {
+            if let Some(monitor) = monitor_opt {
+                if let Some(video_mode) = monitor.get_video_mode() {
+                    let xpos = (video_mode.width - width as u32) / 2;
+                    let ypos = (video_mode.height - height as u32) / 2;
+                    return (xpos, ypos);
+                }
+            }
+
+            (100, 100)
+        });
+
+        window.set_pos(xpos as i32, ypos as i32);
+
         window.make_current();
         window.set_framebuffer_size_polling(true);
         window.set_cursor_pos_polling(true);
