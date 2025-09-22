@@ -1,20 +1,18 @@
 use cgmath::{perspective, Deg, Point3, Vector3};
-use cgmath::prelude::*;
 use glfw::{Context, Key, Action};
-use gl::types::*;
 
 use std::sync::mpsc::Receiver;
-use std::os::raw::c_void;
 
 use crate::c_str;
 use crate::core::time::Time;
 use crate::glutils::{
-    shader::Shader,
-    buffer::{VertexArray, VertexBuffer},
-    texture::Texture
+    shader::Shader
 };
 
 use crate::camera::{Camera, CameraMovement};
+use crate::graphics::cuboid_renderer::CuboidRenderer;
+use crate::world::entity::Entity;
+use crate::world::scene::Scene;
 use cgmath::{Matrix4, vec3};
 
 const SCR_WIDTH: u32 = 800;
@@ -30,10 +28,7 @@ pub struct Application {
     last_y: f32,
     time: Time,
     shader: Shader,
-    vao: VertexArray,
-    vbo: VertexBuffer,
-    texture: Texture,
-    cube_positions: [Vector3<f32>; 10]
+    scene: Scene
 }
 
 impl Application {
@@ -63,49 +58,14 @@ impl Application {
             gl::Enable(gl::DEPTH_TEST);
         }
 
-        let vertices: [f32; 180] = [
-            -0.5, -0.5, -0.5, 0.0, 0.0,
-            0.5, -0.5, -0.5, 1.0, 0.0,
-            0.5, 0.5, -0.5, 1.0, 1.0,
-            0.5, 0.5, -0.5, 1.0, 1.0,
-            -0.5, 0.5, -0.5, 0.0, 1.0,
-            -0.5, -0.5, -0.5, 0.0, 0.0,
-
-            -0.5, -0.5, 0.5, 0.0, 0.0,
-            0.5, -0.5, 0.5, 1.0, 0.0,
-            0.5, 0.5, 0.5, 1.0, 1.0,
-            0.5, 0.5, 0.5, 1.0, 1.0,
-            -0.5, 0.5, 0.5, 0.0, 1.0,
-            -0.5, -0.5, 0.5, 0.0, 0.0,
-
-            -0.5, 0.5, 0.5, 1.0, 0.0,
-            -0.5, 0.5, -0.5, 1.0, 1.0,
-            -0.5, -0.5, -0.5, 0.0, 1.0,
-            -0.5, -0.5, -0.5, 0.0, 1.0,
-            -0.5, -0.5, 0.5, 0.0, 0.0,
-            -0.5, 0.5, 0.5, 1.0, 0.0,
-
-            0.5, 0.5, 0.5, 1.0, 0.0,
-            0.5, 0.5, -0.5, 1.0, 1.0,
-            0.5, -0.5, -0.5, 0.0, 1.0,
-            0.5, -0.5, -0.5, 0.0, 1.0,
-            0.5, -0.5, 0.5, 0.0, 0.0,
-            0.5, 0.5, 0.5, 1.0, 0.0,
-
-            -0.5, -0.5, -0.5, 0.0, 1.0,
-            0.5, -0.5, -0.5, 1.0, 1.0,
-            0.5, -0.5, 0.5, 1.0, 0.0,
-            0.5, -0.5, 0.5, 1.0, 0.0,
-            -0.5, -0.5, 0.5, 0.0, 0.0,
-            -0.5, -0.5, -0.5, 0.0, 1.0,
-
-            -0.5, 0.5, -0.5, 0.0, 1.0,
-            0.5, 0.5, -0.5, 1.0, 1.0,
-            0.5, 0.5, 0.5, 1.0, 0.0,
-            0.5, 0.5, 0.5, 1.0, 0.0,
-            -0.5, 0.5, 0.5, 0.0, 0.0,
-            -0.5, 0.5, -0.5, 0.0, 1.0
-        ];
+        let shader = Shader::new("shaders/shader.vs", "shaders/shader.fs");
+        unsafe {
+            shader.use_program();
+            shader.set_int(c_str!("texture1"), 0);
+        }
+        
+        let scene = Scene::new();
+        let root = scene.get_root();
         
         let cube_positions: [Vector3<f32>; 10] = [
             vec3(0.0, 0.0, 0.0),
@@ -120,30 +80,19 @@ impl Application {
             vec3(-1.3, 1.0, -1.5)
         ];
 
-        let shader = Shader::new("shaders/shader.vs", "shaders/shader.fs");
-        let vao = VertexArray::new();
-        let vbo = VertexBuffer::new();
+        let mut root_borrow = root.borrow_mut();
+        for (i, position) in cube_positions.iter().enumerate() {
+            let child = Entity::new();
+            let child_rc = std::rc::Rc::new(std::cell::RefCell::new(child));
 
-        vao.bind();
-        vbo.bind();
-        vbo.set_data(&vertices);
+            let angle = 20.0 * i as f32;
+            child_rc.borrow_mut().transform.set_local_rotation(vec3(angle, angle, angle));
 
-        let stride = 5 * std::mem::size_of::<GLfloat>() as GLsizei;
-
-        // position attribute
-        vao.set_attribute(0, 3, gl::FLOAT, stride, std::ptr::null());
-
-        // texture coord attribute
-        vao.set_attribute(1, 2, gl::FLOAT, stride, (3 * std::mem::size_of::<GLfloat>()) as *const c_void);
-
-        vbo.unbind();
-        vao.unbind();
-
-        let texture = Texture::new("resources/textures/container.jpg");
-
-        unsafe {
-            shader.use_program();
-            shader.set_int(c_str!("texture1"), 0);
+            child_rc.borrow_mut().parent = Some(std::rc::Rc::downgrade(&root));
+            child_rc.borrow_mut().add_component(CuboidRenderer::new());
+            child_rc.borrow_mut().transform.set_local_position(*position);
+            
+            root_borrow.children.push_back(child_rc);
         }
 
         Self {
@@ -156,10 +105,7 @@ impl Application {
             last_y: SCR_HEIGHT as f32 / 2.0,
             time: Time::new(),
             shader,
-            vao,
-            vbo,
-            texture,
-            cube_positions,
+            scene
         }
     }
 
@@ -172,12 +118,13 @@ impl Application {
             self.process_events();
             self.process_input();
 
+            self.scene.update();
+
             // Render
             unsafe {
                 gl::ClearColor(0.2, 0.3, 0.3, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-                self.texture.bind();
                 self.shader.use_program();
 
                 let projection: Matrix4<f32> = perspective(Deg(self.camera.zoom), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 100.0);
@@ -186,15 +133,7 @@ impl Application {
                 let view = self.camera.get_view_matrix();
                 self.shader.set_mat4(c_str!("view"), &view);
 
-                self.vao.bind();
-                for (i, position) in self.cube_positions.iter().enumerate() {
-                    let mut model: Matrix4<f32> = Matrix4::from_translation(*position);
-                    let angle = 20.0 * i as f32;
-                    model = model * Matrix4::from_axis_angle(vec3(1.0, 0.3, 0.5).normalize(), Deg(angle));
-                    self.shader.set_mat4(c_str!("model"), &model);
-
-                    gl::DrawArrays(gl::TRIANGLES, 0, 36);
-                }
+                self.scene.render(&self.shader);
             }
 
             // glfw: swap buffers and poll IO events

@@ -4,6 +4,9 @@ unsafe extern "C" {}
 mod glutils;
 mod core;
 mod camera;
+mod math;
+mod world;
+mod graphics;
 
 use core::application::Application;
 
