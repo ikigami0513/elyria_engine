@@ -11,6 +11,6 @@ mod graphics;
 use core::application::Application;
 
 fn main() {
-    let mut app = Application::new();
+    let mut app = Application::new(1920, 1200, "Elyria");
     app.run();
 }

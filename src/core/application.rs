@@ -1,9 +1,10 @@
 use cgmath::{perspective, Deg, Point3, Vector3};
-use glfw::{Context, Key, Action};
+use glfw::{Context, Key};
 
 use std::sync::mpsc::Receiver;
 
 use crate::c_str;
+use crate::core::input::InputHandler;
 use crate::core::time::Time;
 use crate::glutils::{
     shader::Shader
@@ -23,16 +24,14 @@ pub struct Application {
     window: glfw::Window,
     events: Receiver<(f64, glfw::WindowEvent)>,
     camera: Camera,
-    first_mouse: bool,
-    last_x: f32,
-    last_y: f32,
     time: Time,
     shader: Shader,
-    scene: Scene
+    scene: Scene,
+    input: InputHandler
 }
 
 impl Application {
-    pub fn new() -> Self {
+    pub fn new(width: u32, height: u32, title: &str) -> Self {
         // glfw: initialize and configure
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
@@ -41,7 +40,7 @@ impl Application {
         glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
 
         // glfw window creation
-        let (mut window, events) = glfw.create_window(SCR_WIDTH, SCR_HEIGHT, "Elyria", glfw::WindowMode::Windowed)
+        let (mut window, events) = glfw.create_window(width, height, title, glfw::WindowMode::Windowed)
             .expect("Failed to create GLFW window");
 
         window.make_current();
@@ -49,6 +48,7 @@ impl Application {
         window.set_cursor_pos_polling(true);
         window.set_scroll_polling(true);
         window.set_cursor_mode(glfw::CursorMode::Disabled);
+        window.set_key_polling(true);
 
         // gl: load all OpenGL function pointers
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
@@ -95,17 +95,20 @@ impl Application {
             root_borrow.children.push_back(child_rc);
         }
 
+        let mut input = InputHandler::new();
+        let (xpos, ypos) = window.get_cursor_pos();
+        input.last_x = xpos as f32;
+        input.last_y = ypos as f32;
+
         Self {
             glfw,
             window,
             events,
             camera: Camera { position: Point3::new(0.0, 0.0, 3.0), ..Camera::default()},
-            first_mouse: true,
-            last_x: SCR_WIDTH as f32 / 2.0,
-            last_y: SCR_HEIGHT as f32 / 2.0,
             time: Time::new(),
             shader,
-            scene
+            scene,
+            input
         }
     }
 
@@ -119,6 +122,12 @@ impl Application {
             self.process_input();
 
             self.scene.update();
+
+            let (xpos, ypos) = self.window.get_cursor_pos();
+            let (x_offset, y_offset) = self.input.get_mouse_movement(xpos, ypos);
+            self.camera.process_mouse_movement(x_offset, y_offset, true);
+            self.camera.process_mouse_scroll(self.input.get_scroll_delta());
+            self.input.end_frame();
 
             // Render
             unsafe {
@@ -143,50 +152,35 @@ impl Application {
     }
 
     fn process_events(&mut self) {
+        self.input.reset_scroll_delta();
+
         for (_, event) in glfw::flush_messages(&self.events) {
+            self.input.update(&event);
             match event {
                 glfw::WindowEvent::FramebufferSize(width, height) => {
                     unsafe { gl::Viewport(0, 0, width, height) }
-                }
-                glfw::WindowEvent::CursorPos(xpos, ypos) => {
-                    let (xpos, ypos) = (xpos as f32, ypos as f32);
-                    if self.first_mouse {
-                        self.last_x = xpos;
-                        self.last_y = ypos;
-                        self.first_mouse = false;
-                    }
-
-                    let xoffset = xpos - self.last_x;
-                    let yoffset = self.last_y - ypos; // reversed since y-coordinates go from bottom to top
-
-                    self.last_x = xpos;
-                    self.last_y = ypos;
-
-                    self.camera.process_mouse_movement(xoffset, yoffset, true);
-                }
-                glfw::WindowEvent::Scroll(_xoffset, yoffset) => {
-                    self.camera.process_mouse_scroll(yoffset as f32);
-                }
+                },
                 _ => {}
             }
         }
     }
 
     fn process_input(&mut self) {
-        if self.window.get_key(Key::Escape) == Action::Press {
+        if self.input.is_key_pressed(Key::Escape) {
             self.window.set_should_close(true)
         }
 
-        if self.window.get_key(Key::W) == Action::Press {
+        if self.input.is_key_pressed(Key::W) {
             self.camera.process_keyboard(CameraMovement::FORWARD, self.time.delta_time());
         }
-        if self.window.get_key(Key::S) == Action::Press {
+        if self.input.is_key_pressed(Key::S) {
             self.camera.process_keyboard(CameraMovement::BACKWARD, self.time.delta_time());
         }
-        if self.window.get_key(Key::A) == Action::Press {
+
+        if self.input.is_key_pressed(Key::A) {
             self.camera.process_keyboard(CameraMovement::LEFT, self.time.delta_time());
         }
-        if self.window.get_key(Key::D) == Action::Press {
+        if self.input.is_key_pressed(Key::D) {
             self.camera.process_keyboard(CameraMovement::RIGHT, self.time.delta_time());
         }
     }
