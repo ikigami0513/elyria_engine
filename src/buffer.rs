@@ -6,6 +6,7 @@ pub struct VertexArray {
     id: GLuint
 }
 
+#[allow(dead_code)]
 impl VertexArray {
     pub fn new() -> Self {
         let mut id: GLuint = 0;
@@ -43,6 +44,7 @@ pub struct VertexBuffer {
     id: GLuint
 }
 
+#[allow(dead_code)]
 impl VertexBuffer {
     pub fn new() -> Self {
         let mut id: GLuint = 0;
@@ -82,6 +84,7 @@ pub struct ElementBuffer {
     id: GLuint
 }
 
+#[allow(dead_code)]
 impl ElementBuffer {
     pub fn new() -> Self {
         let mut id: GLuint = 0;
