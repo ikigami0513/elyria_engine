@@ -6,6 +6,7 @@ use crate::graphics::mesh::{ Mesh, Vertex };
 use crate::world::components::Component;
 
 #[derive(Default)]
+#[allow(dead_code)]
 pub struct ModelRenderComponent {
     pub meshes: Vec<Mesh>,
     pub textures: Vec<Texture>,
