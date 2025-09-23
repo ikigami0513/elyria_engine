@@ -20,7 +20,7 @@ pub struct CuboidRenderer {
 }
 
 impl CuboidRenderer {
-    pub fn new() -> Self {
+    pub fn new(texture_path: &str) -> Self {
         let vertices: [f32; 180] = [
             -0.5, -0.5, -0.5, 0.0, 0.0,
              0.5, -0.5, -0.5, 1.0, 0.0,
@@ -80,7 +80,7 @@ impl CuboidRenderer {
         vbo.unbind();
         vao.unbind();
 
-        let texture = Texture::new("resources/textures/container.jpg");
+        let texture = Texture::new(texture_path, None);
 
         Self {
             vao,
@@ -95,7 +95,9 @@ impl Component for CuboidRenderer {
         unsafe {
             shader.use_program();
 
+            self.texture.active(0);
             self.texture.bind();
+            shader.set_int(c_str!("texture_diffuse1"), 0);
 
             let owner_entity = owner.borrow();
             let model_matrix = owner_entity.transform.get_model_matrix();

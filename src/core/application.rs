@@ -13,6 +13,7 @@ use crate::glutils::{
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
 use crate::graphics::cuboid_renderer::CuboidRenderer;
+use crate::graphics::model::Model;
 use crate::world::entity::Entity;
 use crate::world::scene::Scene;
 use cgmath::{Matrix4, vec3};
@@ -74,10 +75,6 @@ impl Application {
         }
 
         let shader = Shader::new("shaders/shader.vs", "shaders/shader.fs");
-        unsafe {
-            shader.use_program();
-            shader.set_int(c_str!("texture1"), 0);
-        }
         
         let scene = Scene::new();
         let root = scene.get_root();
@@ -104,11 +101,17 @@ impl Application {
             child_rc.borrow_mut().transform.set_local_rotation(vec3(angle, angle, angle));
 
             child_rc.borrow_mut().parent = Some(std::rc::Rc::downgrade(&root));
-            child_rc.borrow_mut().add_component(CuboidRenderer::new());
+            child_rc.borrow_mut().add_component(CuboidRenderer::new("resources/textures/container.jpg"));
             child_rc.borrow_mut().transform.set_local_position(*position);
             
             root_borrow.children.push_back(child_rc);
         }
+
+        let child = Entity::new();
+        let child_rc = std::rc::Rc::new(std::cell::RefCell::new(child));
+        child_rc.borrow_mut().transform.set_local_scale(vec3(0.1, 0.1, 0.1));
+        child_rc.borrow_mut().add_component(Model::new("resources/objects/nanosuit/nanosuit.obj"));
+        root_borrow.children.push_back(child_rc);
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();

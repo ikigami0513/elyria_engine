@@ -3,14 +3,17 @@ use std::path::Path;
 use gl::types::*;
 use image::{self, GenericImage, DynamicImage::*};
 
+#[derive(Clone)]
 pub struct Texture {
-    id: GLuint
+    id: GLuint,
+    path: String,
+    type_: String
 }
 
 impl Texture {
-    pub fn new(path: &str) -> Self {
+    pub fn new(path: &str, type_: Option<&str>) -> Self {
         let mut id: GLuint = 0;
-        let img = image::open(&Path::new(path)).expect("Texture failed to load");
+        let img = image::open(&Path::new(path)).expect(&format!("Texture failed to load: {}", path));
         let format = match img {
             ImageLuma8(_) => gl::RED,
             ImageLumaA8(_) => gl::RG,
@@ -35,19 +38,45 @@ impl Texture {
             );
             gl::GenerateMipmap(gl::TEXTURE_2D);
 
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+            let wrap_mode = match type_ {
+                Some("texture_normal") | Some("texture_specular") => gl::CLAMP_TO_EDGE as i32,
+                _ => gl::REPEAT as i32,
+            };
+
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, wrap_mode);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, wrap_mode);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         }
 
-        Self { id }
+        Self { 
+            id,
+            path: path.to_string(),
+            type_: match type_ {
+                Some(t) => t.to_string(),
+                None => "texture_diffuse".to_string(),
+            }
+        }
+    }
+
+    pub fn active(&self, id: u32) {
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE0 + id);
+        }
     }
 
     pub fn bind(&self) {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.id);
         }
+    }
+
+    pub fn get_type(&self) -> String {
+        self.type_.clone()
+    }
+
+    pub fn get_path(&self) -> String {
+        self.path.clone()
     }
 }
 
