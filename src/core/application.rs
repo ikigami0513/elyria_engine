@@ -12,10 +12,11 @@ use crate::glutils::{
 
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
-use crate::graphics::cuboid_renderer::CuboidRenderer;
-use crate::graphics::model::Model;
-use crate::world::entity::Entity;
-use crate::world::scene::Scene;
+use crate::graphics::cuboid_renderer::CuboidCreator;
+use crate::graphics::model::ModelLoader;
+use crate::world::components::{Parent, TransformComponent};
+use crate::world::system::{ModelRenderSystem, PrimitiveRenderSystem, System, TransformSystem};
+use crate::world::world::World;
 use cgmath::{Matrix4, vec3};
 
 const SCR_WIDTH: u32 = 800;
@@ -28,7 +29,8 @@ pub struct Application {
     camera: Camera,
     time: Time,
     shader: Shader,
-    scene: Scene,
+    world: World,
+    systems: Vec<Box<dyn System>>,
     input: InputHandler
 }
 
@@ -76,8 +78,8 @@ impl Application {
 
         let shader = Shader::new("shaders/shader.vs", "shaders/shader.fs");
         
-        let scene = Scene::new();
-        let root = scene.get_root();
+        let mut world = World::new();
+        let mut model_loader = ModelLoader::new();
         
         let cube_positions: [Vector3<f32>; 10] = [
             vec3(0.0, 0.0, 0.0),
@@ -92,31 +94,44 @@ impl Application {
             vec3(-1.3, 1.0, -1.5)
         ];
 
-        let mut root_borrow = root.borrow_mut();
+        let root_entity = world.new_entity();
+        world.add_component(root_entity, TransformComponent::new());
+
         for (i, position) in cube_positions.iter().enumerate() {
-            let child = Entity::new();
-            let child_rc = std::rc::Rc::new(std::cell::RefCell::new(child));
+            let child_entity = world.new_entity();
 
+            let mut transform_comp = TransformComponent::new();
             let angle = 20.0 * i as f32;
-            child_rc.borrow_mut().transform.set_local_rotation(vec3(angle, angle, angle));
+            transform_comp.transform.set_local_rotation(vec3(angle, angle, angle));
+            transform_comp.transform.set_local_position(*position);
 
-            child_rc.borrow_mut().parent = Some(std::rc::Rc::downgrade(&root));
-            child_rc.borrow_mut().add_component(CuboidRenderer::new("resources/textures/container.jpg"));
-            child_rc.borrow_mut().transform.set_local_position(*position);
-            
-            root_borrow.children.push_back(child_rc);
+            let cuboid_renderer = CuboidCreator::new_render_component("resources/textures/container.jpg");
+
+            world.add_component(child_entity, transform_comp);
+            world.add_component(child_entity, cuboid_renderer);
+            world.add_component(child_entity, Parent(root_entity));
         }
 
-        let child = Entity::new();
-        let child_rc = std::rc::Rc::new(std::cell::RefCell::new(child));
-        child_rc.borrow_mut().transform.set_local_scale(vec3(0.1, 0.1, 0.1));
-        child_rc.borrow_mut().add_component(Model::new("resources/objects/nanosuit/nanosuit.obj"));
-        root_borrow.children.push_back(child_rc);
+        let nanosuit_entity = world.new_entity();
+        let mut nanosuit_transform = TransformComponent::new();
+        nanosuit_transform.transform.set_local_position(vec3(-1.0, 0.0, 0.0));
+        nanosuit_transform.transform.set_local_scale(vec3(0.1, 0.1, 0.1));
+
+        let nanosuit_model_data = model_loader.load_model("resources/objects/nanosuit/nanosuit.obj");
+
+        world.add_component(nanosuit_entity, nanosuit_transform);
+        world.add_component(nanosuit_entity, nanosuit_model_data);
+        world.add_component(nanosuit_entity, Parent(root_entity));
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();
         input.last_x = xpos as f32;
         input.last_y = ypos as f32;
+
+        let mut systems: Vec<Box<dyn System>> = Vec::new();
+        systems.push(Box::new(TransformSystem));
+        systems.push(Box::new(ModelRenderSystem));
+        systems.push(Box::new(PrimitiveRenderSystem));
 
         Self {
             glfw,
@@ -125,7 +140,8 @@ impl Application {
             camera: Camera { position: Point3::new(0.0, 0.0, 3.0), ..Camera::default()},
             time: Time::new(),
             shader,
-            scene,
+            world,
+            systems,
             input
         }
     }
@@ -139,14 +155,17 @@ impl Application {
             self.process_events();
             self.process_input();
 
-            let frame_context = FrameContext {
+            let mut frame_context = FrameContext {
                 time: &self.time,
-                input: &self.input
+                input: &self.input,
+                world: &mut self.world
             };
 
             self.camera.update(&frame_context);
-            self.scene.update(&frame_context);
-            self.input.end_frame();
+
+            for system in self.systems.iter_mut() {
+                system.update(&mut frame_context);
+            }
 
             // Render
             unsafe {
@@ -161,8 +180,12 @@ impl Application {
                 let view = self.camera.get_view_matrix();
                 self.shader.set_mat4(c_str!("view"), &view);
 
-                self.scene.render(&self.shader);
+                for system in self.systems.iter_mut() {
+                    system.render(&mut frame_context, &self.shader);
+                }
             }
+
+            self.input.end_frame();
 
             // glfw: swap buffers and poll IO events
             self.window.swap_buffers();

@@ -1,3 +1,4 @@
 pub mod entity;
-pub mod component;
-pub mod scene;
+pub mod components;
+pub mod world;
+pub mod system;

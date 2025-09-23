@@ -3,7 +3,7 @@ use std::path::Path;
 use gl::types::*;
 use image::{self, GenericImage, DynamicImage::*};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Texture {
     id: GLuint,
     path: String,

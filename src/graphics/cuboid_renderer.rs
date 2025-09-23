@@ -1,26 +1,25 @@
 use std::os::raw::c_void;
 use gl::types::*;
-use std::rc::Rc;
-use std::cell::RefCell;
-
-use crate::c_str;
 use crate::glutils::{
-    shader::Shader,
     buffer::{VertexArray, VertexBuffer},
     texture::Texture
 };
-use crate::world::component::Component;
-use crate::world::entity::Entity;
+use crate::world::components::Component;
 
+#[derive(Default)]
 #[allow(dead_code)]
-pub struct CuboidRenderer {
-    vao: VertexArray,
-    vbo: VertexBuffer,
-    texture: Texture
+pub struct PrimitiveRenderComponent {
+    pub vao: VertexArray,
+    pub vbo: VertexBuffer,
+    pub texture: Texture,
 }
 
-impl CuboidRenderer {
-    pub fn new(texture_path: &str) -> Self {
+impl Component for PrimitiveRenderComponent {}
+
+pub struct CuboidCreator;
+
+impl CuboidCreator {
+    pub fn new_render_component(texture_path: &str) -> PrimitiveRenderComponent {
         let vertices: [f32; 180] = [
             -0.5, -0.5, -0.5, 0.0, 0.0,
              0.5, -0.5, -0.5, 1.0, 0.0,
@@ -62,7 +61,7 @@ impl CuboidRenderer {
              0.5, 0.5, 0.5, 1.0, 0.0,
              0.5, 0.5, 0.5, 1.0, 0.0,
             -0.5, 0.5, 0.5, 0.0, 0.0,
-            -0.5, 0.5, -0.5, 0.0, 1.0
+            -0.5, 0.5, -0.5, 0.0, 1.0 
         ];
 
         let vao = VertexArray::new();
@@ -75,36 +74,17 @@ impl CuboidRenderer {
         let stride = 5 * std::mem::size_of::<GLfloat>() as GLsizei;
 
         vao.set_attribute(0, 3, gl::FLOAT, stride, std::ptr::null());
-        vao.set_attribute(1, 2, gl::FLOAT, stride, (3 * std::mem::size_of::<GLfloat>()) as *const c_void);
+        vao.set_attribute(2, 2, gl::FLOAT, stride, (3 * std::mem::size_of::<GLfloat>()) as *const c_void);
 
         vbo.unbind();
         vao.unbind();
 
-        let texture = Texture::new(texture_path, None);
+        let texture = Texture::new(texture_path, Some("texture_diffuse1".into()));
 
-        Self {
+        PrimitiveRenderComponent {
             vao,
             vbo,
             texture
-        }
-    }
-}
-
-impl Component for CuboidRenderer {
-    fn render(&self, owner: &Rc<RefCell<Entity>>, shader: &Shader) {
-        unsafe {
-            shader.use_program();
-
-            self.texture.active(0);
-            self.texture.bind();
-            shader.set_int(c_str!("texture_diffuse1"), 0);
-
-            let owner_entity = owner.borrow();
-            let model_matrix = owner_entity.transform.get_model_matrix();
-            shader.set_mat4(c_str!("model"), model_matrix);
-
-            self.vao.bind();
-            gl::DrawArrays(gl::TRIANGLES, 0, 36);
         }
     }
 }

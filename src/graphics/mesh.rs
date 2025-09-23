@@ -100,6 +100,13 @@ impl Mesh {
         self.vao.bind();
         unsafe { gl::DrawElements(gl::TRIANGLES, self.indices.len() as i32, gl::UNSIGNED_INT, ptr::null()) }
         self.vao.unbind();
+
+        for i in 0..self.textures.len() {
+            unsafe {
+                gl::ActiveTexture(gl::TEXTURE0 + i as u32);
+                gl::BindTexture(gl::TEXTURE_2D, 0);
+            }
+        }
     }
 
     unsafe fn setup_mesh(&mut self) {

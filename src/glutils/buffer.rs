@@ -2,6 +2,7 @@ use std::mem;
 use std::os::raw::c_void;
 use gl::types::*;
 
+#[derive(Default)]
 pub struct VertexArray {
     id: GLuint
 }
@@ -40,6 +41,7 @@ impl Drop for VertexArray {
     }
 }
 
+#[derive(Default)]
 pub struct VertexBuffer {
     id: GLuint
 }

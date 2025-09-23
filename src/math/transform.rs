@@ -1,5 +1,6 @@
 use cgmath::{Matrix4, Vector3, Euler, Deg, prelude::*};
 
+#[derive(Clone)]
 pub struct Transform {
     // Local space information
     position: Vector3<f32>,
