@@ -8,6 +8,41 @@
             "y": 0,
             "width": 64,
             "height": 64
+        },
+        {
+            "name": "idle_down_1",
+            "x": 64,
+            "y": 0,
+            "width": 64,
+            "height": 64
+        },
+        {
+            "name": "idle_down_2",
+            "x": 128,
+            "y": 0,
+            "width": 64,
+            "height": 64
+        },
+        {
+            "name": "idle_down_3",
+            "x": 192,
+            "y": 0,
+            "width": 64,
+            "height": 64
+        },
+        {
+            "name": "idle_down_4",
+            "x": 256,
+            "y": 0,
+            "width": 64,
+            "height": 64
+        },
+        {
+            "name": "idle_down_5",
+            "x": 320,
+            "y": 0,
+            "width": 64,
+            "height": 64
         }
     ]
 }

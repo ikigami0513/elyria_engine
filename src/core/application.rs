@@ -12,8 +12,8 @@ use crate::glutils::{
 
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
+use crate::graphics::managers::SpritesheetManager;
 use crate::graphics::sprite::{SpriteCreator};
-use crate::graphics::spritesheet::Spritesheet;
 use crate::world::components::{Parent, TransformComponent};
 use crate::world::system::{System, TransformSystem, SpriteRenderSystem};
 use crate::world::world::World;
@@ -30,7 +30,8 @@ pub struct Application {
     shader: Shader,
     world: World,
     systems: Vec<Box<dyn System>>,
-    input: InputHandler
+    input: InputHandler,
+    spritesheet_manager: SpritesheetManager
 }
 
 impl Application {
@@ -80,7 +81,8 @@ impl Application {
         
         let mut world = World::new();
 
-        let spritesheet = Spritesheet::new("resources/data/spritesheets/player_base.json").unwrap();
+        let mut spritesheet_manager = SpritesheetManager::new();
+        let _ = spritesheet_manager.load("resources/data/spritesheets/player_base.json");
 
         let root_entity = world.new_entity();
         world.add_component(root_entity, TransformComponent::new());
@@ -98,7 +100,7 @@ impl Application {
         let mut player_transform = TransformComponent::new();
         player_transform.transform.set_local_position(vec3(200., 200., 0.0));
         world.add_component(player_entity, player_transform);
-        world.add_component(player_entity, SpriteCreator::from_sprite(&spritesheet, "idle_down_0").unwrap());
+        world.add_component(player_entity, SpriteCreator::from_sprite(spritesheet_manager.get("player_base").unwrap(), "idle_down_0").unwrap());
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();
@@ -118,7 +120,8 @@ impl Application {
             shader,
             world,
             systems,
-            input
+            input,
+            spritesheet_manager
         }
     }
 
@@ -134,7 +137,8 @@ impl Application {
             let mut frame_context = FrameContext {
                 time: &self.time,
                 input: &self.input,
-                world: &mut self.world
+                world: &mut self.world,
+                spritesheet_manager: &mut self.spritesheet_manager
             };
 
             self.camera.update(&frame_context);

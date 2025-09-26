@@ -1,0 +1,12 @@
+{
+    "name": "player_base_idle_down",
+    "spritesheet": "player_base",
+    "frames": [
+        "idle_down_0",
+        "idle_down_1",
+        "idle_down_2",
+        "idle_down_3",
+        "idle_down_4",
+        "idle_down_5"
+    ]
+}

@@ -16,8 +16,8 @@ struct SpriteDataSerializer {
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
-struct SpritesheetSerializer {
-    name: String,
+pub struct SpritesheetSerializer {
+    pub name: String,
     texture: String,
     sprites: Vec<SpriteDataSerializer>
 }
@@ -31,17 +31,23 @@ pub struct Sprite {
 
 #[derive(Debug)]
 pub struct Spritesheet {
+    pub name: String,
     pub texture: Texture,
     sprites: HashMap<String, Sprite>
 }
 
+#[allow(dead_code)]
 impl Spritesheet {
-    pub fn new(metadata_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_file(metadata_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let mut file = File::open(metadata_path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let serializer: SpritesheetSerializer = serde_json::from_str(&contents)?;
 
+        Self::from_serializer(serializer)
+    }
+
+    pub fn from_serializer(serializer: SpritesheetSerializer) -> Result<Self, Box<dyn std::error::Error>> {
         let texture = Texture::new(&serializer.texture);
         let tex_width = texture.width as f32;
         let tex_height = texture.height as f32;
@@ -59,24 +65,31 @@ impl Spritesheet {
             let v_max = top / tex_height;
 
             let tex_coords = [
-            // Triangle 1
-            u_min, v_max, // Haut-gauche (doit utiliser v_max, le haut)
-            u_min, v_min, // Bas-gauche (doit utiliser v_min, le bas)
-            u_max, v_min, // Bas-droit (doit utiliser v_min, le bas)
-            // Triangle 2
-            u_min, v_max, // Haut-gauche (doit utiliser v_max, le haut)
-            u_max, v_min, // Bas-droit (doit utiliser v_min, le bas)
-            u_max, v_max, // Haut-droit (doit utiliser v_max, le haut)
+                // Triangle 1
+                u_min, v_max, // Haut-gauche
+                u_min, v_min, // Bas-gauche
+                u_max, v_min, // Bas-droit
+                // Triangle 2
+                u_min, v_max, // Haut-gauche
+                u_max, v_min, // Bas-droit
+                u_max, v_max, // Haut-droit
             ];
 
-            sprites.insert(s_data.name.clone(), Sprite { 
-                tex_coords,
-                width: s_data.width,
-                height: s_data.height
-            });
+            sprites.insert(
+                s_data.name.clone(),
+                Sprite {
+                    tex_coords,
+                    width: s_data.width,
+                    height: s_data.height,
+                },
+            );
         }
 
-        Ok(Spritesheet { texture, sprites })
+        Ok(Spritesheet {
+            name: serializer.name,
+            texture,
+            sprites,
+        })
     }
 
     pub fn get_sprite(&self, name: &str) -> Option<&Sprite> {
