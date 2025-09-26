@@ -1,6 +1,8 @@
 {
     "name": "player_base_idle_down",
     "spritesheet": "player_base",
+    "frame_duration": 0.1,
+    "loops": true,
     "frames": [
         "idle_down_0",
         "idle_down_1",

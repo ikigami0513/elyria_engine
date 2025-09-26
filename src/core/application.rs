@@ -12,10 +12,11 @@ use crate::glutils::{
 
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
-use crate::graphics::managers::SpritesheetManager;
-use crate::graphics::sprite::{SpriteCreator};
+use crate::graphics::animation::AnimationComponent;
+use crate::graphics::managers::{AnimationManager, SpritesheetManager};
+use crate::graphics::sprite::{SpriteCreator, SpriteRendererComponent};
 use crate::world::components::{Parent, TransformComponent};
-use crate::world::system::{System, TransformSystem, SpriteRenderSystem};
+use crate::world::system::{AnimationSystem, SpriteRenderSystem, System, TransformSystem};
 use crate::world::world::World;
 
 const SCR_WIDTH: u32 = 800;
@@ -31,7 +32,8 @@ pub struct Application {
     world: World,
     systems: Vec<Box<dyn System>>,
     input: InputHandler,
-    spritesheet_manager: SpritesheetManager
+    spritesheet_manager: SpritesheetManager,
+    animation_manager: AnimationManager
 }
 
 impl Application {
@@ -81,8 +83,16 @@ impl Application {
         
         let mut world = World::new();
 
+        world.register_component::<Parent>();
+        world.register_component::<TransformComponent>();
+        world.register_component::<SpriteRendererComponent>();
+        world.register_component::<AnimationComponent>();
+
         let mut spritesheet_manager = SpritesheetManager::new();
         let _ = spritesheet_manager.load("resources/data/spritesheets/player_base.json");
+
+        let mut animation_manager = AnimationManager::new();
+        let _ = animation_manager.load("resources/data/animations/player_base_idle_down.json");
 
         let root_entity = world.new_entity();
         world.add_component(root_entity, TransformComponent::new());
@@ -101,6 +111,9 @@ impl Application {
         player_transform.transform.set_local_position(vec3(200., 200., 0.0));
         world.add_component(player_entity, player_transform);
         world.add_component(player_entity, SpriteCreator::from_sprite(spritesheet_manager.get("player_base").unwrap(), "idle_down_0").unwrap());
+        let mut anim_comp = AnimationComponent::new();
+        anim_comp.play("player_base_idle_down"); 
+        world.add_component(player_entity, anim_comp);
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();
@@ -109,6 +122,7 @@ impl Application {
 
         let mut systems: Vec<Box<dyn System>> = Vec::new();
         systems.push(Box::new(TransformSystem));
+        systems.push(Box::new(AnimationSystem));
         systems.push(Box::new(SpriteRenderSystem));
 
         Self {
@@ -121,7 +135,8 @@ impl Application {
             world,
             systems,
             input,
-            spritesheet_manager
+            spritesheet_manager,
+            animation_manager
         }
     }
 
@@ -138,7 +153,8 @@ impl Application {
                 time: &self.time,
                 input: &self.input,
                 world: &mut self.world,
-                spritesheet_manager: &mut self.spritesheet_manager
+                spritesheet_manager: &mut self.spritesheet_manager,
+                animation_manager: &mut self.animation_manager
             };
 
             self.camera.update(&frame_context);
