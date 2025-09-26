@@ -13,10 +13,10 @@ use crate::glutils::{
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
 use crate::graphics::sprite::{SpriteCreator};
+use crate::graphics::spritesheet::Spritesheet;
 use crate::world::components::{Parent, TransformComponent};
 use crate::world::system::{System, TransformSystem, SpriteRenderSystem};
 use crate::world::world::World;
-
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
@@ -80,6 +80,8 @@ impl Application {
         
         let mut world = World::new();
 
+        let spritesheet = Spritesheet::new("resources/data/spritesheets/player_base.json").unwrap();
+
         let root_entity = world.new_entity();
         world.add_component(root_entity, TransformComponent::new());
 
@@ -89,8 +91,14 @@ impl Application {
         container_transform.transform.set_local_scale(vec3(0.1, 0.1, 0.1));
 
         world.add_component(container_entity, container_transform);
-        world.add_component(container_entity, SpriteCreator::new_render_component("resources/textures/container.jpg"));
+        world.add_component(container_entity, SpriteCreator::from_texture("resources/textures/container.jpg"));
         world.add_component(container_entity, Parent(root_entity));
+
+        let player_entity = world.new_entity();
+        let mut player_transform = TransformComponent::new();
+        player_transform.transform.set_local_position(vec3(200., 200., 0.0));
+        world.add_component(player_entity, player_transform);
+        world.add_component(player_entity, SpriteCreator::from_sprite(&spritesheet, "idle_down_0").unwrap());
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();

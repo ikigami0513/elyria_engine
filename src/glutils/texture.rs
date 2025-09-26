@@ -3,7 +3,7 @@ use image::{self, DynamicImage, GenericImage};
 use std::os::raw::c_void;
 
 // La structure Texture contient maintenant les dimensions de l'image.
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct Texture {
     pub id: u32,
     pub path: String,

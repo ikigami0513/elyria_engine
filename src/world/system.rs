@@ -97,8 +97,8 @@ impl System for SpriteRenderSystem {
 
                     // 2. On crée une matrice pour la taille de base de la texture
                     let base_size_matrix = Matrix4::from_nonuniform_scale(
-                        sprite.texture.width as f32, 
-                        sprite.texture.height as f32, 
+                        sprite.width as f32, 
+                        sprite.height as f32, 
                         1.0
                     );
 

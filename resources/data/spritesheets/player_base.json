@@ -1,0 +1,13 @@
+{
+    "name": "player_base",
+    "texture": "resources/textures/spritesheets/player_base.png",
+    "sprites": [
+        {
+            "name": "idle_down_0",
+            "x": 0,
+            "y": 0,
+            "width": 64,
+            "height": 64
+        }
+    ]
+}
