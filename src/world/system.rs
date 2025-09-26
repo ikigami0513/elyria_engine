@@ -1,8 +1,9 @@
+use cgmath::Matrix4;
+
 use crate::c_str;
 use crate::core::frame_context::FrameContext;
 use crate::glutils::shader::Shader;
-use crate::graphics::cuboid_renderer::PrimitiveRenderComponent;
-use crate::graphics::model::ModelRenderComponent;
+use crate::graphics::sprite::SpriteRendererComponent;
 use crate::world::components::{Parent, TransformComponent};
 use crate::world::entity::Entity;
 
@@ -75,58 +76,46 @@ impl System for TransformSystem {
     }
 }
 
-pub struct ModelRenderSystem;
+pub struct SpriteRenderSystem;
 
-impl System for ModelRenderSystem {
+impl System for SpriteRenderSystem {
     fn render(&mut self, ctx: &mut FrameContext, shader: &Shader) {
         let transform_pool = ctx.world.get_components::<TransformComponent>()
             .expect("TransformComponent pool not found");
-        let models_pool = ctx.world.get_components::<ModelRenderComponent>()
-            .expect("ModelRenderComponent pool not found");
+        let sprites_pool = ctx.world.get_components::<SpriteRendererComponent>()
+            .expect("SpriteRendererComponent pool not found");
 
-        for (entity_id, model) in models_pool.iter() {
+        for (entity_id, sprite) in sprites_pool.iter() {
             if let Some(transform_comp) = transform_pool.get(entity_id) {
                 unsafe {
                     shader.use_program();
-                    shader.set_mat4(c_str!("model"), &transform_comp.transform.get_model_matrix());
-                }
-                for mesh in &model.meshes {
-                    unsafe { mesh.render(shader); }
+                    sprite.texture.active(0);
+                    sprite.texture.bind();
+                    shader.set_int(c_str!("texture_diffuse1"), 0);
+
+                    let transform_matrix = transform_comp.transform.get_model_matrix();
+
+                    // 2. On crée une matrice pour la taille de base de la texture
+                    let base_size_matrix = Matrix4::from_nonuniform_scale(
+                        sprite.texture.width as f32, 
+                        sprite.texture.height as f32, 
+                        1.0
+                    );
+
+                    let final_model_matrix = transform_matrix * base_size_matrix;
+                    
+                    shader.set_mat4(c_str!("model"), &final_model_matrix);
+
+                    sprite.vao.bind();
+                    gl::DrawArrays(gl::TRIANGLES, 0, 6);
+                    sprite.vao.unbind();
                 }
             }
         }
-    }
-}
 
-pub struct PrimitiveRenderSystem;
-
-impl System for PrimitiveRenderSystem {
-    fn render(&mut self, ctx: &mut FrameContext, shader: &Shader) {
-        let transform_pool = ctx.world.get_components::<TransformComponent>()
-            .expect("TransformComponent pool not found");
-        let primitives_pool = ctx.world.get_components::<PrimitiveRenderComponent>()
-            .expect("PrimitiveRenderComponent pool not found");
-
-        for (entity_id, primitive) in primitives_pool.iter() {
-            if let Some(transform_comp) = transform_pool.get(entity_id) {
-                unsafe {
-                    shader.use_program();
-
-                    primitive.texture.active(0);
-                    primitive.texture.bind();
-                    shader.set_int(c_str!("texture_diffuse1"), 0);
-
-                    shader.set_mat4(c_str!("model"), &transform_comp.transform.get_model_matrix());
-
-                    primitive.vao.bind();
-                    gl::DrawArrays(gl::TRIANGLES, 0, 36);
-                }
-            }
-
-            unsafe {
-                gl::ActiveTexture(gl::TEXTURE0);
-                gl::BindTexture(gl::TEXTURE_2D, 0);
-            }            
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, 0);
         }
     }
 }

@@ -1,89 +1,101 @@
+use gl;
+use image::{self, DynamicImage, GenericImage};
 use std::os::raw::c_void;
-use std::path::Path;
-use gl::types::*;
-use image::{self, GenericImage, DynamicImage::*};
 
-#[derive(Clone, Default)]
+// La structure Texture contient maintenant les dimensions de l'image.
+#[derive(Default)]
 pub struct Texture {
-    id: GLuint,
-    path: String,
-    type_: String
+    pub id: u32,
+    pub path: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Texture {
-    pub fn new(path: &str, type_: Option<&str>) -> Self {
-        let mut id: GLuint = 0;
-        let img = image::open(&Path::new(path)).expect(&format!("Texture failed to load: {}", path));
-        let format = match img {
-            ImageLuma8(_) => gl::RED,
-            ImageLumaA8(_) => gl::RG,
-            ImageRgb8(_) => gl::RGB,
-            ImageRgba8(_) => gl::RGBA
+    /// Crée une nouvelle texture OpenGL à partir d'un fichier image.
+    pub fn new(path: &str) -> Self {
+        let mut texture = Texture {
+            id: 0,
+            path: path.to_string(),
+            width: 0,
+            height: 0,
         };
-        let data = img.raw_pixels();
 
         unsafe {
-            gl::GenTextures(1, &mut id);
-            gl::BindTexture(gl::TEXTURE_2D, id);
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                format as i32,
-                img.width() as i32,
-                img.height() as i32,
-                0,
-                format,
-                gl::UNSIGNED_BYTE,
-                &data[0] as *const u8 as *const c_void
-            );
-            gl::GenerateMipmap(gl::TEXTURE_2D);
+            // Générer un identifiant de texture
+            gl::GenTextures(1, &mut texture.id);
 
-            let wrap_mode = match type_ {
-                Some("texture_normal") | Some("texture_specular") => gl::CLAMP_TO_EDGE as i32,
-                _ => gl::REPEAT as i32,
+            // Charger l'image depuis le disque avec la caisse `image`
+            let img = image::open(&texture.path)
+                .unwrap_or_else(|e| panic!("Échec du chargement de la texture à '{}': {}", texture.path, e));
+
+            // Récupérer les dimensions et les stocker dans la structure
+            let (width, height) = img.dimensions();
+            texture.width = width;
+            texture.height = height;
+
+            // Convertir l'image au format RGBA8 pour une compatibilité maximale
+            let data = match &img {
+                DynamicImage::ImageRgba8(image) => image.to_vec(),
+                _ => img.to_rgba().to_vec(),
             };
 
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, wrap_mode);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, wrap_mode);
+            // Lier la texture pour la configurer
+            gl::BindTexture(gl::TEXTURE_2D, texture.id);
+
+            // Envoyer les données de l'image à la VRAM de la carte graphique
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0, // Niveau de mipmap
+                gl::RGBA as i32, // Format interne
+                texture.width as i32,
+                texture.height as i32,
+                0, // Toujours 0 (pour la bordure)
+                gl::RGBA, // Format des données source
+                gl::UNSIGNED_BYTE, // Type des données source
+                data.as_ptr() as *const c_void,
+            );
+
+            // Générer les mipmaps pour de meilleures performances et un meilleur rendu
+            gl::GenerateMipmap(gl::TEXTURE_2D);
+
+            // Configurer les options de la texture
+            // WRAPPING: Comment la texture se répète si on la dessine sur une surface plus grande
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+
+            // FILTERING: Comment la texture est rendue quand elle est agrandie ou rétrécie
+            // GL_LINEAR offre un rendu plus lisse que GL_NEAREST
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        }
 
-        Self { 
-            id,
-            path: path.to_string(),
-            type_: match type_ {
-                Some(t) => t.to_string(),
-                None => "texture_diffuse".to_string(),
-            }
+            // Délier la texture pour nettoyer l'état OpenGL
+            gl::BindTexture(gl::TEXTURE_2D, 0);
         }
+        texture
     }
 
-    pub fn active(&self, id: u32) {
+    /// Active une unité de texture spécifique (ex: TEXTURE0, TEXTURE1, ...).
+    pub fn active(&self, unit: u32) {
         unsafe {
-            gl::ActiveTexture(gl::TEXTURE0 + id);
+            // GL_TEXTURE0 + 0 = GL_TEXTURE0
+            // GL_TEXTURE0 + 1 = GL_TEXTURE1
+            gl::ActiveTexture(gl::TEXTURE0 + unit);
         }
     }
 
+    /// Lie cette texture à l'unité de texture actuellement active.
     pub fn bind(&self) {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.id);
         }
     }
 
-    pub fn get_type(&self) -> String {
-        self.type_.clone()
-    }
-
-    pub fn get_path(&self) -> String {
-        self.path.clone()
-    }
-}
-
-impl Drop for Texture {
-    fn drop(&mut self) {
+    /// Délie la texture de l'unité de texture active (lie la texture 0 à la place).
+    #[allow(dead_code)]
+    pub fn unbind(&self) {
         unsafe {
-            gl::DeleteTextures(1, &self.id);
+            gl::BindTexture(gl::TEXTURE_2D, 0);
         }
     }
 }

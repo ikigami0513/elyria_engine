@@ -1,4 +1,4 @@
-use cgmath::{perspective, Deg, Point3, Vector3};
+use cgmath::{ortho, Vector3, Matrix4, vec3};
 use glfw::{Context, Key};
 
 use std::sync::mpsc::Receiver;
@@ -12,12 +12,11 @@ use crate::glutils::{
 
 use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
-use crate::graphics::cuboid_renderer::CuboidCreator;
-use crate::graphics::model::ModelLoader;
+use crate::graphics::sprite::{SpriteCreator};
 use crate::world::components::{Parent, TransformComponent};
-use crate::world::system::{ModelRenderSystem, PrimitiveRenderSystem, System, TransformSystem};
+use crate::world::system::{System, TransformSystem, SpriteRenderSystem};
 use crate::world::world::World;
-use cgmath::{Matrix4, vec3};
+
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
@@ -65,7 +64,7 @@ impl Application {
         window.set_framebuffer_size_polling(true);
         window.set_cursor_pos_polling(true);
         window.set_scroll_polling(true);
-        window.set_cursor_mode(glfw::CursorMode::Disabled);
+        // window.set_cursor_mode(glfw::CursorMode::Disabled);
         window.set_key_polling(true);
 
         // gl: load all OpenGL function pointers
@@ -73,55 +72,25 @@ impl Application {
 
         // Shader and OpenGL setup
         unsafe {
-            gl::Enable(gl::DEPTH_TEST);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         let shader = Shader::new("shaders/shader.vs", "shaders/shader.fs");
         
         let mut world = World::new();
-        let mut model_loader = ModelLoader::new();
-        
-        let cube_positions: [Vector3<f32>; 10] = [
-            vec3(0.0, 0.0, 0.0),
-            vec3(2.0, 5.0, -15.0),
-            vec3(-1.5, -2.2, -2.5),
-            vec3(-3.8, -2.0, -12.3),
-            vec3(2.4, -0.4, -3.5),
-            vec3(-1.7, 3.0, -7.5),
-            vec3(1.3, -2.0, -2.5),
-            vec3(1.5, 2.0, -2.5),
-            vec3(1.5, 0.2, -1.5),
-            vec3(-1.3, 1.0, -1.5)
-        ];
 
         let root_entity = world.new_entity();
         world.add_component(root_entity, TransformComponent::new());
 
-        for (i, position) in cube_positions.iter().enumerate() {
-            let child_entity = world.new_entity();
+        let container_entity = world.new_entity();
+        let mut container_transform = TransformComponent::new();
+        container_transform.transform.set_local_position(vec3(400.0, 300.0, 0.0));
+        container_transform.transform.set_local_scale(vec3(0.1, 0.1, 0.1));
 
-            let mut transform_comp = TransformComponent::new();
-            let angle = 20.0 * i as f32;
-            transform_comp.transform.set_local_rotation(vec3(angle, angle, angle));
-            transform_comp.transform.set_local_position(*position);
-
-            let cuboid_renderer = CuboidCreator::new_render_component("resources/textures/container.jpg");
-
-            world.add_component(child_entity, transform_comp);
-            world.add_component(child_entity, cuboid_renderer);
-            world.add_component(child_entity, Parent(root_entity));
-        }
-
-        let nanosuit_entity = world.new_entity();
-        let mut nanosuit_transform = TransformComponent::new();
-        nanosuit_transform.transform.set_local_position(vec3(-1.0, 0.0, 0.0));
-        nanosuit_transform.transform.set_local_scale(vec3(0.1, 0.1, 0.1));
-
-        let nanosuit_model_data = model_loader.load_model("resources/objects/nanosuit/nanosuit.obj");
-
-        world.add_component(nanosuit_entity, nanosuit_transform);
-        world.add_component(nanosuit_entity, nanosuit_model_data);
-        world.add_component(nanosuit_entity, Parent(root_entity));
+        world.add_component(container_entity, container_transform);
+        world.add_component(container_entity, SpriteCreator::new_render_component("resources/textures/container.jpg"));
+        world.add_component(container_entity, Parent(root_entity));
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();
@@ -130,14 +99,13 @@ impl Application {
 
         let mut systems: Vec<Box<dyn System>> = Vec::new();
         systems.push(Box::new(TransformSystem));
-        systems.push(Box::new(ModelRenderSystem));
-        systems.push(Box::new(PrimitiveRenderSystem));
+        systems.push(Box::new(SpriteRenderSystem));
 
         Self {
             glfw,
             window,
             events,
-            camera: Camera { position: Point3::new(0.0, 0.0, 3.0), ..Camera::default()},
+            camera: Camera { position: Vector3::new(0.0, 0.0, 3.0), ..Camera::default()},
             time: Time::new(),
             shader,
             world,
@@ -170,11 +138,11 @@ impl Application {
             // Render
             unsafe {
                 gl::ClearColor(0.2, 0.3, 0.3, 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
 
                 self.shader.use_program();
 
-                let projection: Matrix4<f32> = perspective(Deg(self.camera.zoom), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 100.0);
+                let projection: Matrix4<f32> = ortho(0.0, SCR_WIDTH as f32, 0.0, SCR_HEIGHT as f32, -1.0, 1.0);
                 self.shader.set_mat4(c_str!("projection"), &projection);
 
                 let view = self.camera.get_view_matrix();

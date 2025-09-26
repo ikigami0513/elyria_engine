@@ -1,18 +1,23 @@
 #version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoord;
-layout (location = 3) in vec3 aTangent;
-layout (location = 4) in vec3 aBitangent;
 
+// Attributs fournis par le VBO du SpriteCreator
+layout (location = 0) in vec2 aPos;      // Position en 2D (x, y)
+layout (location = 1) in vec2 aTexCoord; // Coordonnées de texture (u, v)
+
+// Sortie vers le Fragment Shader
 out vec2 TexCoords;
 
+// Matrices de transformation
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
 void main()
 {
-	TexCoords = aTexCoord;
-	gl_Position = projection * view * model * vec4(aPos, 1.0f);
+    // On passe les coordonnées de texture au fragment shader
+    TexCoords = aTexCoord;
+    
+    // On transforme la position 2D en une position 3D (z=0)
+    // puis en coordonnées d'écran via les matrices.
+    gl_Position = projection * view * model * vec4(aPos, 0.0, 1.0);
 }
