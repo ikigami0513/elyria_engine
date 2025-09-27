@@ -172,12 +172,27 @@ impl System for AnimationSystem {
                         -0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
                         -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,
                     ];
+
+                    let mut tex_coords = sprite_data.tex_coords;
+                    if animation.flipped {
+                        let u_val1 = tex_coords[0]; 
+                        let u_val2 = *tex_coords.iter().step_by(2).find(|&&u| u != u_val1).unwrap_or(&u_val1);
+
+                        for i in 0..6 {
+                            if tex_coords[i * 2] == u_val1 {
+                                tex_coords[i * 2] = u_val2;
+                            } else {
+                                tex_coords[i * 2] = u_val1;
+                            }
+                        }
+                    }
+
                     let mut new_vertices = [0.0f32; 24];
                     for i in 0..6 {
                         new_vertices[i * 4]     = positions[i * 2];
                         new_vertices[i * 4 + 1] = positions[i * 2 + 1];
-                        new_vertices[i * 4 + 2] = sprite_data.tex_coords[i * 2];
-                        new_vertices[i * 4 + 3] = sprite_data.tex_coords[i * 2 + 1];
+                        new_vertices[i * 4 + 2] = tex_coords[i * 2];
+                        new_vertices[i * 4 + 3] = tex_coords[i * 2 + 1];
                     }
 
                     sprite_comp.vbo.bind();

@@ -19,21 +19,20 @@ use crate::world::components::{Parent, TransformComponent};
 use crate::world::system::{AnimationSystem, SpriteRenderSystem, System, TransformSystem};
 use crate::world::world::World;
 
-const SCR_WIDTH: u32 = 800;
-const SCR_HEIGHT: u32 = 600;
-
 pub struct Application {
     glfw: glfw::Glfw,
     window: glfw::Window,
     events: Receiver<(f64, glfw::WindowEvent)>,
-    camera: Camera,
+    pub camera: Camera,
     time: Time,
     shader: Shader,
     pub world: World,
-    systems: Vec<Box<dyn System>>,
+    pub systems: Vec<Box<dyn System>>,
     input: InputHandler,
     pub spritesheet_manager: SpritesheetManager,
-    pub animation_manager: AnimationManager
+    pub animation_manager: AnimationManager,
+    pub width: u32,
+    pub height: u32
 }
 
 impl Application {
@@ -112,7 +111,9 @@ impl Application {
             systems,
             input,
             spritesheet_manager,
-            animation_manager
+            animation_manager,
+            width,
+            height
         }
     }
 
@@ -146,10 +147,10 @@ impl Application {
 
                 self.shader.use_program();
 
-                let projection: Matrix4<f32> = ortho(0.0, SCR_WIDTH as f32, 0.0, SCR_HEIGHT as f32, -1.0, 1.0);
+                let projection: Matrix4<f32> = ortho(0.0, self.width as f32, 0.0, self.height as f32, -1.0, 1.0);
                 self.shader.set_mat4(c_str!("projection"), &projection);
 
-                let view = self.camera.get_view_matrix();
+                let view = self.camera.get_view_matrix(self.width, self.height);
                 self.shader.set_mat4(c_str!("view"), &view);
 
                 for system in self.systems.iter_mut() {

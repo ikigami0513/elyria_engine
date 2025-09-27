@@ -64,6 +64,10 @@ impl Transform {
         &self.position
     }
 
+    pub fn get_local_position_mut(&mut self) -> &mut Vector3<f32> {
+        &mut self.position
+    }
+
     pub fn get_local_rotation(&self) -> Vector3<f32> {
         Vector3::new(self.euler_rotation.x.0, self.euler_rotation.y.0, self.euler_rotation.z.0)
     }

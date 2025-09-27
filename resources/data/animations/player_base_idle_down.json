@@ -3,6 +3,7 @@
     "spritesheet": "player_base",
     "frame_duration": 0.1,
     "loops": true,
+    "flipped": false,
     "frames": [
         "idle_down_0",
         "idle_down_1",

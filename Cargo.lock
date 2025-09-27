@@ -189,6 +189,7 @@ dependencies = [
  "cgmath",
  "common",
  "engine",
+ "glfw",
 ]
 
 [[package]]

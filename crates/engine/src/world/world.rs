@@ -40,6 +40,16 @@ impl World {
         components_of_type_map.insert(entity, component);
     }
 
+    pub fn get_component<T: Component + 'static>(&self, entity: Entity) -> Option<&T> {
+        self.get_components::<T>()
+            .and_then(|components_map| components_map.get(&entity))
+    }
+
+    pub fn get_component_mut<T: Component + 'static>(&mut self, entity: Entity) -> Option<&mut T> {
+        self.get_components_mut::<T>()
+            .and_then(|components_map| components_map.get_mut(&entity))
+    }
+
     pub fn get_components<T: Component + 'static>(&self) -> Option<&HashMap<Entity, T>> {
         let type_id = TypeId::of::<T>();
         self.components

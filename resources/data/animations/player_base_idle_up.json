@@ -1,0 +1,15 @@
+{
+    "name": "player_base_idle_up",
+    "spritesheet": "player_base",
+    "frame_duration": 0.1,
+    "loops": true,
+    "flipped": false,
+    "frames": [
+        "idle_up_0",
+        "idle_up_1",
+        "idle_up_2",
+        "idle_up_3",
+        "idle_up_4",
+        "idle_up_5"
+    ]
+}

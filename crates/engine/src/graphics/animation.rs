@@ -5,9 +5,10 @@ use crate::world::components::Component;
 pub struct AnimationSerializer {
     pub name: String,
     pub spritesheet: String,
-    pub frames: Vec<String>,
     pub frame_duration: f32,
-    pub loops: bool
+    pub loops: bool,
+    pub flipped: bool,
+    pub frames: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -15,9 +16,10 @@ pub struct AnimationSerializer {
 pub struct Animation {
     pub name: String,
     pub spritesheet_name: String,
-    pub frames: Vec<String>,
     pub frame_duration: f32,
-    pub loops: bool
+    pub loops: bool,
+    pub flipped: bool,
+    pub frames: Vec<String>,
 }
 
 #[derive(Clone)]

@@ -59,9 +59,10 @@ impl AnimationManager {
         let animation = Animation {
             name: serializer.name.clone(),
             spritesheet_name: serializer.spritesheet,
-            frames: serializer.frames,
             frame_duration: serializer.frame_duration,
-            loops: serializer.loops
+            loops: serializer.loops,
+            flipped: serializer.flipped,
+            frames: serializer.frames,
         };
 
         self.animations.insert(serializer.name, animation);
