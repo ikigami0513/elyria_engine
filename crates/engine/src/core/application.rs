@@ -1,4 +1,4 @@
-use cgmath::{ortho, Vector3, Matrix4, vec3};
+use cgmath::{ortho, Vector3, Matrix4};
 use glfw::{Context, Key};
 
 use std::sync::mpsc::Receiver;
@@ -14,7 +14,7 @@ use crate::core::frame_context::FrameContext;
 use crate::camera::Camera;
 use crate::graphics::animation::AnimationComponent;
 use crate::graphics::managers::{AnimationManager, SpritesheetManager};
-use crate::graphics::sprite::{SpriteCreator, SpriteRendererComponent};
+use crate::graphics::sprite::SpriteRendererComponent;
 use crate::world::components::{Parent, TransformComponent};
 use crate::world::system::{AnimationSystem, SpriteRenderSystem, System, TransformSystem};
 use crate::world::world::World;
@@ -29,11 +29,11 @@ pub struct Application {
     camera: Camera,
     time: Time,
     shader: Shader,
-    world: World,
+    pub world: World,
     systems: Vec<Box<dyn System>>,
     input: InputHandler,
-    spritesheet_manager: SpritesheetManager,
-    animation_manager: AnimationManager
+    pub spritesheet_manager: SpritesheetManager,
+    pub animation_manager: AnimationManager
 }
 
 impl Application {
@@ -88,32 +88,8 @@ impl Application {
         world.register_component::<SpriteRendererComponent>();
         world.register_component::<AnimationComponent>();
 
-        let mut spritesheet_manager = SpritesheetManager::new();
-        let _ = spritesheet_manager.load("resources/data/spritesheets/player_base.json");
-
-        let mut animation_manager = AnimationManager::new();
-        let _ = animation_manager.load("resources/data/animations/player_base_idle_down.json");
-
-        let root_entity = world.new_entity();
-        world.add_component(root_entity, TransformComponent::new());
-
-        let container_entity = world.new_entity();
-        let mut container_transform = TransformComponent::new();
-        container_transform.transform.set_local_position(vec3(400.0, 300.0, 0.0));
-        container_transform.transform.set_local_scale(vec3(0.1, 0.1, 0.1));
-
-        world.add_component(container_entity, container_transform);
-        world.add_component(container_entity, SpriteCreator::from_texture("resources/textures/container.jpg"));
-        world.add_component(container_entity, Parent(root_entity));
-
-        let player_entity = world.new_entity();
-        let mut player_transform = TransformComponent::new();
-        player_transform.transform.set_local_position(vec3(200., 200., 0.0));
-        world.add_component(player_entity, player_transform);
-        world.add_component(player_entity, SpriteCreator::from_sprite(spritesheet_manager.get("player_base").unwrap(), "idle_down_0").unwrap());
-        let mut anim_comp = AnimationComponent::new();
-        anim_comp.play("player_base_idle_down"); 
-        world.add_component(player_entity, anim_comp);
+        let spritesheet_manager = SpritesheetManager::new();
+        let animation_manager = AnimationManager::new();
 
         let mut input = InputHandler::new();
         let (xpos, ypos) = window.get_cursor_pos();
