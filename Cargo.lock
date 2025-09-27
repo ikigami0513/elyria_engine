@@ -102,6 +102,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
+name = "common"
+version = "0.1.0"
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -143,7 +147,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
-name = "elyria"
+name = "engine"
 version = "0.1.0"
 dependencies = [
  "cgmath",
@@ -177,6 +181,14 @@ name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
+
+[[package]]
+name = "game"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "engine",
+]
 
 [[package]]
 name = "gif"
@@ -659,6 +671,13 @@ dependencies = [
  "ryu",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "common",
 ]
 
 [[package]]

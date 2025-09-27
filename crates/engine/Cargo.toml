@@ -1,0 +1,15 @@
+[package]
+name = "engine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cgmath = "0.16.1"
+gl = "0.10.0"
+glfw = "0.23.0"
+image = "0.19.0"
+num = "0.2.0"
+rand = "0.5.5"
+hashbrown = "0.14"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
