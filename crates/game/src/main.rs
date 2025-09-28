@@ -8,7 +8,7 @@ use engine::{core::application::Application, graphics::{animation::AnimationComp
 
 use player::{PlayerComponent, PlayerSystem};
 
-use crate::player::Direction;
+use crate::player::{Direction, State};
 
 fn main() {
     let mut app = Application::new(1920, 1200, "Elyria");
@@ -18,10 +18,17 @@ fn main() {
 
     app.spritesheet_manager.load("resources/data/spritesheets/player_base.json").unwrap();
 
+    // player base idle animation
     app.animation_manager.load("resources/data/animations/player_base_idle_down.json").unwrap();
     app.animation_manager.load("resources/data/animations/player_base_idle_left.json").unwrap();
     app.animation_manager.load("resources/data/animations/player_base_idle_right.json").unwrap();
     app.animation_manager.load("resources/data/animations/player_base_idle_up.json").unwrap();
+
+    // player base walk animation
+    app.animation_manager.load("resources/data/animations/player_base_walk_down.json").unwrap();
+    app.animation_manager.load("resources/data/animations/player_base_walk_left.json").unwrap();
+    app.animation_manager.load("resources/data/animations/player_base_walk_right.json").unwrap();
+    app.animation_manager.load("resources/data/animations/player_base_walk_up.json").unwrap();
 
     let root_entity = app.world.new_entity();
     app.world.add_component(root_entity, TransformComponent::new());
@@ -37,17 +44,21 @@ fn main() {
 
     let player_entity = app.world.new_entity();
     let mut player_transform = TransformComponent::new();
-    player_transform.transform.set_local_position(vec3(0.0, 0.0, 0.0));
+    player_transform.transform.set_local_position(vec3(200.0, 0.0, 0.0));
     let mut anim_comp = AnimationComponent::new();
     anim_comp.play("player_base_idle_down"); 
 
     app.world.add_component(player_entity, player_transform);
     app.world.add_component(player_entity, SpriteCreator::from_sprite(app.spritesheet_manager.get("player_base").unwrap(), "idle_down_0").unwrap());
     app.world.add_component(player_entity, anim_comp);
-    app.world.add_component(player_entity, PlayerComponent { speed: 100.0, direction: Direction::DOWN });
+    app.world.add_component(player_entity, PlayerComponent { 
+        speed: 100.0, 
+        direction: Direction::DOWN,
+        state: State::IDLE
+    });
     app.world.add_component(player_entity, Parent(root_entity));
 
-    app.camera.target = Some(player_entity);
+    // app.camera.target = Some(player_entity);
 
     app.run();
 }

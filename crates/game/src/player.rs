@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector2};
+use cgmath::{vec3, InnerSpace, Vector2};
 use engine::{graphics::animation::AnimationComponent, world::{components::{Component, TransformComponent}, entity::Entity, system::System}};
 use glfw::Key;
 
@@ -21,9 +21,25 @@ impl Direction {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum State {
+    IDLE,
+    WALK
+}
+
+impl State {
+    pub fn to_str(state: State) -> &'static str {
+        match state {
+            State::IDLE => "idle",
+            State::WALK => "walk"
+        }
+    }
+}
+
 pub struct PlayerComponent {
     pub speed: f32,
-    pub direction: Direction
+    pub direction: Direction,
+    pub state: State
 }
 
 impl Component for PlayerComponent {}
@@ -31,6 +47,7 @@ impl Component for PlayerComponent {}
 pub struct PlayerSystem;
 
 impl System for PlayerSystem {
+    #[allow(unused_assignments)]
     fn update(&mut self, ctx: &mut engine::core::frame_context::FrameContext) {
         let mut target_entities: Vec<Entity> = Vec::new();
         if let (Some(players), Some(transforms)) = (
@@ -51,13 +68,14 @@ impl System for PlayerSystem {
             {
                 let mut velocity = Vector2::new(0.0, 0.0);
                 let mut direction = player_component.direction.clone();
+                let mut state = player_component.state.clone();
                 
                 if ctx.input.is_key_pressed(Key::W) {
-                    velocity.y = -1.0;
+                    velocity.y = 1.0;
                     direction = Direction::UP;
                 }
                 if ctx.input.is_key_pressed(Key::S) {
-                    velocity.y = 1.0;
+                    velocity.y = -1.0;
                     direction = Direction::DOWN;
                 }
 
@@ -73,17 +91,24 @@ impl System for PlayerSystem {
                 if velocity.magnitude2() > 0.0 {
                     let final_movement = velocity.normalize() * player_component.speed * ctx.time.delta_time();
 
-                    let position = transform_component.transform.get_local_position_mut();
-                    position.x += final_movement.x;
-                    position.y += final_movement.y;
+                    let position = transform_component.transform.get_local_position();
+                    transform_component.transform.set_local_position(vec3(
+                        position.x + final_movement.x, 
+                        position.y + final_movement.y, 
+                        position.z
+                    ));
+
+                    state = State::WALK;
+                }
+                else {
+                    state = State::IDLE;
                 }
 
-                println!("{} {}", transform_component.transform.get_local_position().x, transform_component.transform.get_local_position().y);
-
-                if direction != player_component.direction {
+                if direction != player_component.direction || state != player_component.state {
                     player_component.direction = direction;
+                    player_component.state = state;
                     if let Some(animation_comp) = ctx.world.get_component_mut::<AnimationComponent>(entity) {
-                        animation_comp.play(format!("player_base_idle_{}", Direction::to_str(direction)).as_str());
+                        animation_comp.play(format!("player_base_{}_{}", State::to_str(state), Direction::to_str(direction)).as_str());
                     }
                 }
             }

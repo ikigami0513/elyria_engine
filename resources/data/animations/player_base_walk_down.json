@@ -1,0 +1,15 @@
+{
+    "name": "player_base_walk_down",
+    "spritesheet": "player_base",
+    "frame_duration": 0.1,
+    "loops": true,
+    "flipped": false,
+    "frames": [
+        "walk_down_0",
+        "walk_down_1",
+        "walk_down_2",
+        "walk_down_3",
+        "walk_down_4",
+        "walk_down_5"
+    ]
+}
