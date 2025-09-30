@@ -5,7 +5,7 @@ use crate::world::entity::Entity;
 
 pub struct World {
     next_entity_id: u32,
-    components: HashMap<TypeId, Box<dyn Any>>
+    components: HashMap<TypeId, Box<dyn Any + Send + Sync>>
 }
 
 impl World {
@@ -22,12 +22,12 @@ impl World {
         entity
     }
 
-    pub fn register_component<T: Component + 'static>(&mut self) {
+    pub fn register_component<T: Component + 'static + Send + Sync>(&mut self) {
         let type_id = TypeId::of::<T>();
         self.components.entry(type_id).or_insert_with(|| Box::new(HashMap::<Entity, T>::new()));
     }
 
-    pub fn add_component<T: Component + 'static>(&mut self, entity: Entity, component: T) {
+    pub fn add_component<T: Component + 'static + Send + Sync>(&mut self, entity: Entity, component: T) {
         let type_id = TypeId::of::<T>();
         let components_of_type = self.components
             .entry(type_id)
@@ -66,8 +66,8 @@ impl World {
 
     pub fn get_components_mut_pair<T, U>(&mut self, entity: Entity) -> Option<(&mut T, &mut U)>
     where
-        T: Component + 'static,
-        U: Component + 'static,
+        T: Component + 'static + Send + Sync,
+        U: Component + 'static + Send + Sync,
     {
         let type_id_t = TypeId::of::<T>();
         let type_id_u = TypeId::of::<U>();

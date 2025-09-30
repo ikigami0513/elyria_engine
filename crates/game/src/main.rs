@@ -2,18 +2,71 @@
 unsafe extern "C" {}
 
 mod player;
+mod network;
+mod tick;
 
 use cgmath::vec3;
+use common::message::Message;
 use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::{Parent, TransformComponent}};
 
 use player::{PlayerComponent, PlayerSystem};
+use crate::{network::client::Client, player::{Direction, State}, tick::TickSystem};
 
-use crate::player::{Direction, State};
+use tokio::sync::mpsc;
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let (tx, mut rx) = mpsc::channel::<Message>(100);
+
+    let server_addr = "127.0.0.1:8080";
+    match Client::connect(server_addr).await {
+        Ok(mut client) => {
+            println!("Connexion réussie !");
+
+            // 2. On lance la tâche réseau en arrière-plan
+            // On lui donne le récepteur du canal (rx)
+            tokio::spawn(async move {
+                loop {
+                    // tokio::select! attend que l'une des deux opérations se termine
+                    tokio::select! {
+                        // Cas A: On reçoit un message du jeu à envoyer au serveur
+                        Some(message_to_send) = rx.recv() => {
+                            println!("Envoi d'un message au serveur: {:?}", message_to_send);
+                            if let Err(e) = client.send(&message_to_send).await {
+                                eprintln!("Erreur lors de l'envoi du message: {}", e);
+                                break; // On arrête la boucle en cas d'erreur
+                            }
+                        },
+
+                        // Cas B: On reçoit un message du serveur
+                        result = client.receive() => {
+                             match result {
+                                Ok(message) => {
+                                    println!("Message reçu du serveur: {:?}", message.get_data());
+                                    // TODO: Traiter le message reçu du serveur
+                                    // Par exemple, mettre à jour l'état d'un autre joueur
+                                }
+                                Err(e) => {
+                                    eprintln!("Erreur de réception: {}", e);
+                                    break; // Sortir de la boucle si la connexion est perdue
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        Err(e) => {
+            eprintln!("Impossible de se connecter au serveur: {}", e);
+            return;
+        }
+    }
+
     let mut app = Application::new(1920, 1200, "Elyria");
+    app.camera.zoom = 2.0;
 
     app.systems.push(Box::new(PlayerSystem));
+    app.systems.push(Box::new(TickSystem::new(tx.clone())));
     app.world.register_component::<PlayerComponent>();
 
     app.spritesheet_manager.load("resources/data/spritesheets/player_base.json").unwrap();
@@ -58,7 +111,7 @@ fn main() {
     });
     app.world.add_component(player_entity, Parent(root_entity));
 
-    // app.camera.target = Some(player_entity);
+    app.camera.target = Some(player_entity);
 
     app.run();
 }

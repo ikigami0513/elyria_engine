@@ -8,3 +8,4 @@ engine = { path = "../engine" }
 common = { path = "../common" }
 cgmath = "0.16.1"
 glfw = "0.23.0"
+tokio = { version = "1", features = ["full"] }

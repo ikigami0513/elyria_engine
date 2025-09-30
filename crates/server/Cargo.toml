@@ -5,4 +5,7 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../common" }
+engine = { path = "../engine" }
 tokio = { version = "1", features = ["full"] }
+async-trait = "0.1.80"
+cgmath = "0.16.1"
