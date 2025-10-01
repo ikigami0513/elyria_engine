@@ -9,3 +9,4 @@ engine = { path = "../engine" }
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1.80"
 cgmath = "0.16.1"
+uuid = { version = "1.8.0", features = ["v4"] }

@@ -1,16 +1,17 @@
 use async_trait::async_trait;
 use cgmath::vec3;
 use engine::world::{components::{Component, TransformComponent}, entity::Entity};
+use uuid::Uuid;
 
 use crate::handler::{Handler, HandlerContext};
 
 #[derive(Debug)]
 pub struct PlayerComponent {
-    pub id: u32
+    pub id: Uuid
 }
 
 impl PlayerComponent {
-    pub fn new(id: u32) -> Self {
+    pub fn new(id: Uuid) -> Self {
         Self {
             id
         }
@@ -25,9 +26,8 @@ pub struct PlayerMoveHandler;
 impl Handler for PlayerMoveHandler {
     async fn handle<'ctx>(&self, ctx: HandlerContext<'ctx>) {
         let data = ctx.message.get_data();
-        println!("{:?}", data);
 
-        let target_player_id = match data.get("id").and_then(|s| s.parse::<u32>().ok()) {
+        let target_player_id = match data.get("player_id").and_then(|s| s.parse::<Uuid>().ok()) {
             Some(id) => id,
             None => {
                 eprintln!("ID de joueur manquant ou invalide dans le message.");
@@ -54,11 +54,10 @@ impl Handler for PlayerMoveHandler {
 
             if let (Some(x), Some(y), Some(z)) = (x_pos, y_pos, z_pos) {
                 if let Some((_player_comp, transform_comp)) = ctx.world.get_components_mut_pair::<PlayerComponent, TransformComponent>(entity) {
-                    let position = transform_comp.transform.get_local_position();
                     transform_comp.transform.set_local_position(vec3(
-                        position.x + x, 
-                        position.y + y, 
-                        position.z + z
+                        x, 
+                        y,
+                        z
                     ));
 
                     println!("Joueur {} déplacé à {:?}", target_player_id, transform_comp.transform.get_local_position());

@@ -6,7 +6,7 @@ use engine::{
     }
 };
 use tokio::sync::mpsc;
-use crate::player::{Direction, PlayerComponent, State};
+use crate::{gamestate::GameStateComponent, player::{Direction, PlayerComponent, State}};
 
 const TICK_INVERTAL: f32 = 1.0 / 20.0;
 
@@ -36,25 +36,29 @@ impl System for TickSystem {
                 let player_entities: Vec<Entity> = player_comp.keys().copied().collect();
 
                 for entity in player_entities {
-                    if let (Some(player), Some(transform)) = (
+                    if let (Some(player), Some(transform), Some(gamestates)) = (
                         ctx.world.get_component::<PlayerComponent>(entity),
-                        ctx.world.get_component::<TransformComponent>(entity)
+                        ctx.world.get_component::<TransformComponent>(entity),
+                        ctx.world.get_components::<GameStateComponent>()
                     ) {
-                        let position = transform.transform.get_local_position();
+                        if let Some(gamestate) = gamestates.values().next() {
+                            let position = transform.transform.get_local_position();
 
-                        let mut msg = Message::new();
-                        msg.add("action", "player_move");
-                        msg.add("x", &position.x.to_string());
-                        msg.add("y", &position.y.to_string());
-                        msg.add("z", &position.z.to_string());
-                        msg.add("direction", Direction::to_str(player.direction));
-                        msg.add("state", State::to_str(player.state));
+                            let mut msg = Message::new();
+                            msg.add("player_id", &gamestate.player_id.unwrap().to_string());
+                            msg.add("action", "player_move");
+                            msg.add("x", &position.x.to_string());
+                            msg.add("y", &position.y.to_string());
+                            msg.add("z", &position.z.to_string());
+                            msg.add("direction", Direction::to_str(player.direction));
+                            msg.add("state", State::to_str(player.state));
 
-                        if let Err(e) = self.network_tx.try_send(msg) {
-                            eprintln!("Impossible d'envoyer la mise à jour du tick au réseau: {}", e);
+                            if let Err(e) = self.network_tx.try_send(msg) {
+                                eprintln!("Impossible d'envoyer la mise à jour du tick au réseau: {}", e);
+                            }
+
+                            break;
                         }
-
-                        break;
                     }
                 }
             }

@@ -4,19 +4,21 @@ unsafe extern "C" {}
 mod player;
 mod network;
 mod tick;
+mod gamestate;
 
 use cgmath::vec3;
 use common::message::Message;
 use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::{Parent, TransformComponent}};
 
 use player::{PlayerComponent, PlayerSystem};
-use crate::{network::client::Client, player::{Direction, State}, tick::TickSystem};
+use crate::{gamestate::GameStateComponent, network::{client::Client, event::NetworkEvent, system::{ConnectedHandler, NetworkEventSystem}}, player::{Direction, State}, tick::TickSystem};
 
 use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() {
-    let (tx, mut rx) = mpsc::channel::<Message>(100);
+    let (game_tx, mut network_rx) = mpsc::channel::<Message>(100);
+    let (network_tx, game_rx) = mpsc::channel::<NetworkEvent>(100);
 
     let server_addr = "127.0.0.1:8080";
     match Client::connect(server_addr).await {
@@ -25,13 +27,13 @@ async fn main() {
 
             // 2. On lance la tâche réseau en arrière-plan
             // On lui donne le récepteur du canal (rx)
+            let network_tx_clone = network_tx.clone();
             tokio::spawn(async move {
                 loop {
                     // tokio::select! attend que l'une des deux opérations se termine
                     tokio::select! {
                         // Cas A: On reçoit un message du jeu à envoyer au serveur
-                        Some(message_to_send) = rx.recv() => {
-                            println!("Envoi d'un message au serveur: {:?}", message_to_send);
+                        Some(message_to_send) = network_rx.recv() => {
                             if let Err(e) = client.send(&message_to_send).await {
                                 eprintln!("Erreur lors de l'envoi du message: {}", e);
                                 break; // On arrête la boucle en cas d'erreur
@@ -42,9 +44,10 @@ async fn main() {
                         result = client.receive() => {
                              match result {
                                 Ok(message) => {
-                                    println!("Message reçu du serveur: {:?}", message.get_data());
-                                    // TODO: Traiter le message reçu du serveur
-                                    // Par exemple, mettre à jour l'état d'un autre joueur
+                                    let event = NetworkEvent { data: message.get_data() };
+                                    if let Err(e) = network_tx_clone.send(event).await {
+                                        eprintln!("Impossible d'envoyer l'événement au jeu: {}", e);
+                                    }
                                 }
                                 Err(e) => {
                                     eprintln!("Erreur de réception: {}", e);
@@ -65,8 +68,12 @@ async fn main() {
     let mut app = Application::new(1920, 1200, "Elyria");
     app.camera.zoom = 2.0;
 
+    let mut network_system = Box::new(NetworkEventSystem::new(game_rx));
+    network_system.handlers.insert("connected".to_string(), Box::new(ConnectedHandler));
+
+    app.systems.push(network_system);
     app.systems.push(Box::new(PlayerSystem));
-    app.systems.push(Box::new(TickSystem::new(tx.clone())));
+    app.systems.push(Box::new(TickSystem::new(game_tx.clone())));
     app.world.register_component::<PlayerComponent>();
 
     app.spritesheet_manager.load("resources/data/spritesheets/player_base.json").unwrap();
@@ -85,6 +92,9 @@ async fn main() {
 
     let root_entity = app.world.new_entity();
     app.world.add_component(root_entity, TransformComponent::new());
+
+    let gamestate_entity = app.world.new_entity();
+    app.world.add_component(gamestate_entity, GameStateComponent { player_id: None } );
 
     let container_entity = app.world.new_entity();
     let mut container_transform = TransformComponent::new();
