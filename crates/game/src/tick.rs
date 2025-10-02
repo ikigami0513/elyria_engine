@@ -6,7 +6,7 @@ use engine::{
     }
 };
 use tokio::sync::mpsc;
-use crate::{gamestate::GameStateComponent, player::{Direction, PlayerComponent, State}};
+use crate::{gamestate::GameStateComponent, player::{Direction, LocalPlayerComponent, State}};
 
 const TICK_INVERTAL: f32 = 1.0 / 20.0;
 
@@ -32,12 +32,12 @@ impl System for TickSystem {
         if self.tick_timer >= TICK_INVERTAL {
             self.tick_timer -= TICK_INVERTAL;
 
-            if let Some(player_comp) = ctx.world.get_components::<PlayerComponent>() {
+            if let Some(player_comp) = ctx.world.get_components::<LocalPlayerComponent>() {
                 let player_entities: Vec<Entity> = player_comp.keys().copied().collect();
 
                 for entity in player_entities {
                     if let (Some(player), Some(transform), Some(gamestates)) = (
-                        ctx.world.get_component::<PlayerComponent>(entity),
+                        ctx.world.get_component::<LocalPlayerComponent>(entity),
                         ctx.world.get_component::<TransformComponent>(entity),
                         ctx.world.get_components::<GameStateComponent>()
                     ) {

@@ -6,8 +6,10 @@ mod player;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use common::player::PlayerInfo;
 use engine::world::components::TransformComponent;
 use engine::world::world::World;
+use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::Mutex;
 
 use tokio::net::{TcpListener, TcpStream};
@@ -20,57 +22,110 @@ use crate::player::{PlayerComponent, PlayerMoveHandler};
 
 struct ElyriaServer {
     handlers: Mutex<HashMap<String, Box<dyn Handler + Send + Sync>>>,
-    world: Mutex<World>
+    world: Mutex<World>,
+    clients: Mutex<HashMap<Uuid, Arc<Mutex<OwnedWriteHalf>>>>
 }
 
 impl ElyriaServer {
     fn new() -> Self {
         Self {
             handlers: Mutex::new(HashMap::new()),
-            world: Mutex::new(World::new())
+            world: Mutex::new(World::new()),
+            clients: Mutex::new(HashMap::new())
         }
     }
 
-    async fn handle_client(&self, mut socket: TcpStream) {
+    async fn handle_client(&self, socket: TcpStream) {
         println!("Client connecté depuis : {}", socket.peer_addr().unwrap());
 
         let player_id = Uuid::new_v4();
+
+        let (mut reader, writer) = socket.into_split();
+        let writer = Arc::new(Mutex::new(writer));
+
+        {
+            self.clients.lock().await.insert(player_id, writer.clone());
+        }
+
+        let initial_transform;
         
         {
             let mut world = self.world.lock().await;
             let player_entity = world.new_entity();
-            world.add_component(player_entity, TransformComponent::new());
+
+            let transform = TransformComponent::new();
+            initial_transform = transform.clone();
+
+            world.add_component(player_entity, transform);
             world.add_component(player_entity, PlayerComponent::new(player_id));
 
             println!("Joueur créé avec l'ID: {}, Entité: {:?}", player_id, player_entity);
             println!("Composants joueurs actuels: {:?}", world.get_components::<PlayerComponent>());
         }
 
-        let mut welcome_message = Message::new();
-        welcome_message.add("action", "connected");
-        welcome_message.add("player_id", &player_id.to_string());
+        {
+            let mut existing_players_info = Vec::new();
 
-        match welcome_message.to_bytes() {
-            Ok(bytes) => {
-                // On envoie d'abord la taille du message (u32)
-                if let Err(e) = socket.write_u32(bytes.len() as u32).await {
-                    eprintln!("Erreur lors de l'envoi de la taille du message de bienvenue: {}", e);
-                    return;
+            {
+                let world = self.world.lock().await;
+
+                if let Some(player_components) = world.get_components::<PlayerComponent>() {
+                    for (entity, player_comp) in player_components.iter() {
+                        if player_comp.id == player_id {
+                            continue;
+                        }
+
+                        if let Some(transform_comp) = world.get_component::<TransformComponent>(*entity) {
+                            existing_players_info.push(PlayerInfo {
+                                id: player_comp.id.to_string(),
+                                x: transform_comp.transform.get_local_position().x,
+                                y: transform_comp.transform.get_local_position().y,
+                                z: transform_comp.transform.get_local_position().z
+                            });
+                        }
+                    }
                 }
-                
-                // Puis on envoie le message lui-même
-                if let Err(e) = socket.write_all(&bytes).await {
-                    eprintln!("Erreur lors de l'envoi du message de bienvenue: {}", e);
-                    return;
+            }
+
+            let existing_players_json = serde_json::to_string(&existing_players_info).unwrap();
+
+            let mut welcome_message = Message::new();
+            welcome_message.add("action", "connected");
+            welcome_message.add("player_id", &player_id.to_string());
+            welcome_message.add("existing_players", &existing_players_json);
+
+            if let Ok(bytes) = welcome_message.to_bytes() {
+                let mut w = writer.lock().await;
+                if w.write_u32(bytes.len() as u32).await.is_ok() {
+                    let _ = w.write_all(&bytes).await;
                 }
-            },
-            Err(e) => {
-                eprintln!("Erreur de sérialisation du message de bienvenue: {}", e);
+            }
+        }
+
+        {
+            let mut broadcast_message = Message::new();
+            broadcast_message.add("action", "new_distant_player");
+            broadcast_message.add("player_id", &player_id.to_string());
+            broadcast_message.add("x", &initial_transform.transform.get_local_position().x.to_string());
+            broadcast_message.add("Y", &initial_transform.transform.get_local_position().y.to_string());
+            broadcast_message.add("z", &initial_transform.transform.get_local_position().z.to_string());
+
+            if let Ok(bytes_to_broadcast) = broadcast_message.to_bytes() {
+                let clients_map = self.clients.lock().await;
+
+                for (id, client_writer) in clients_map.iter() {
+                    if *id != player_id {
+                        let mut w = client_writer.lock().await;
+                        if w.write_u32(bytes_to_broadcast.len() as u32).await.is_ok() {
+                            let _ = w.write_all(&bytes_to_broadcast).await;
+                        }
+                    }
+                }
             }
         }
 
         loop {
-            let msg_len = match socket.read_u32().await {
+            let msg_len = match reader.read_u32().await {
                 Ok(0) | Err(_) => {
                     println!("Client déconnecté.");
                     break;
@@ -79,7 +134,7 @@ impl ElyriaServer {
             };
 
             let mut msg_buffer = vec![0; msg_len as usize];
-            if let Err(e) = socket.read_exact(&mut msg_buffer).await {
+            if let Err(e) = reader.read_exact(&mut msg_buffer).await {
                 eprintln!("Erreur en lisant le message : {}", e);
                 break;
             }
@@ -94,7 +149,8 @@ impl ElyriaServer {
                             let ctx = HandlerContext {
                                 message: &message,
                                 world: &mut world_guard,
-                                socket: &mut socket
+                                clients: &self.clients,
+                                current_player_id: player_id
                             };
 
                             handler.handle(ctx).await;

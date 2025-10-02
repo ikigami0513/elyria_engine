@@ -10,3 +10,5 @@ cgmath = "0.16.1"
 glfw = "0.23.0"
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1.8.0", features = ["v4"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

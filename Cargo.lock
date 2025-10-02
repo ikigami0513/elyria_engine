@@ -253,6 +253,8 @@ dependencies = [
  "common",
  "engine",
  "glfw",
+ "serde",
+ "serde_json",
  "tokio",
  "uuid",
 ]
@@ -888,6 +890,8 @@ dependencies = [
  "cgmath",
  "common",
  "engine",
+ "serde",
+ "serde_json",
  "tokio",
  "uuid",
 ]

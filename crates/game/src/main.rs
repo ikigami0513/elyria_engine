@@ -8,10 +8,10 @@ mod gamestate;
 
 use cgmath::vec3;
 use common::message::Message;
-use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::{Parent, TransformComponent}};
+use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::TransformComponent};
 
-use player::{PlayerComponent, PlayerSystem};
-use crate::{gamestate::GameStateComponent, network::{client::Client, event::NetworkEvent, system::{ConnectedHandler, NetworkEventSystem}}, player::{Direction, State}, tick::TickSystem};
+use player::{LocalPlayerComponent, LocalPlayerSystem};
+use crate::{gamestate::GameStateComponent, network::{client::Client, event::NetworkEvent, handlers::{connected_handler::ConnectedHandler, distant_player_moved::{DistantPlayerMovedHandler, NewDistantPlayerHandler}}, system::NetworkEventSystem}, player::{Direction, DistantPlayerSystem, State}, tick::TickSystem};
 
 use tokio::sync::mpsc;
 
@@ -70,11 +70,14 @@ async fn main() {
 
     let mut network_system = Box::new(NetworkEventSystem::new(game_rx));
     network_system.handlers.insert("connected".to_string(), Box::new(ConnectedHandler));
+    network_system.handlers.insert("player_moved".to_string(), Box::new(DistantPlayerMovedHandler));
+    network_system.handlers.insert("new_distant_player".to_string(), Box::new(NewDistantPlayerHandler));
 
     app.systems.push(network_system);
-    app.systems.push(Box::new(PlayerSystem));
+    app.systems.push(Box::new(LocalPlayerSystem));
+    app.systems.push(Box::new(DistantPlayerSystem));
     app.systems.push(Box::new(TickSystem::new(game_tx.clone())));
-    app.world.register_component::<PlayerComponent>();
+    app.world.register_component::<LocalPlayerComponent>();
 
     app.spritesheet_manager.load("resources/data/spritesheets/player_base.json").unwrap();
 
@@ -90,9 +93,6 @@ async fn main() {
     app.animation_manager.load("resources/data/animations/player_base_walk_right.json").unwrap();
     app.animation_manager.load("resources/data/animations/player_base_walk_up.json").unwrap();
 
-    let root_entity = app.world.new_entity();
-    app.world.add_component(root_entity, TransformComponent::new());
-
     let gamestate_entity = app.world.new_entity();
     app.world.add_component(gamestate_entity, GameStateComponent { player_id: None } );
 
@@ -103,23 +103,21 @@ async fn main() {
 
     app.world.add_component(container_entity, container_transform);
     app.world.add_component(container_entity, SpriteCreator::from_texture("resources/textures/container.jpg"));
-    app.world.add_component(container_entity, Parent(root_entity));
 
     let player_entity = app.world.new_entity();
     let mut player_transform = TransformComponent::new();
-    player_transform.transform.set_local_position(vec3(200.0, 0.0, 0.0));
+    player_transform.transform.set_local_position(vec3(0.0, 0.0, 0.0));
     let mut anim_comp = AnimationComponent::new();
     anim_comp.play("player_base_idle_down"); 
 
     app.world.add_component(player_entity, player_transform);
     app.world.add_component(player_entity, SpriteCreator::from_sprite(app.spritesheet_manager.get("player_base").unwrap(), "idle_down_0").unwrap());
     app.world.add_component(player_entity, anim_comp);
-    app.world.add_component(player_entity, PlayerComponent { 
+    app.world.add_component(player_entity, LocalPlayerComponent { 
         speed: 100.0, 
         direction: Direction::DOWN,
         state: State::IDLE
     });
-    app.world.add_component(player_entity, Parent(root_entity));
 
     app.camera.target = Some(player_entity);
 
