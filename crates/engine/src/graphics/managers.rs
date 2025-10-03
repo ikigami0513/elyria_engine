@@ -1,7 +1,7 @@
 use std::{fs::File, io::Read};
 
 use hashbrown::HashMap;
-use crate::graphics::{animation::{Animation, AnimationSerializer}, spritesheet::{Spritesheet, SpritesheetSerializer}};
+use crate::{core::path::get_path_to_asset, graphics::{animation::{Animation, AnimationSerializer}, spritesheet::{Spritesheet, SpritesheetSerializer}}};
 
 pub struct SpritesheetManager {
     spritesheets: HashMap<String, Spritesheet>
@@ -47,7 +47,7 @@ impl AnimationManager {
     }
 
     pub fn load(&mut self, metadata_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut file = File::open(metadata_path)?;
+        let mut file = File::open(get_path_to_asset(metadata_path))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let serializer: AnimationSerializer = serde_json::from_str(&contents)?;

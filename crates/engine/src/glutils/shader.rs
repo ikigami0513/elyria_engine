@@ -10,6 +10,8 @@ use gl::types::*;
 use cgmath::{Matrix, Matrix4, Vector3};
 use cgmath::prelude::*;
 
+use crate::core::path::get_path_to_asset;
+
 pub struct Shader {
     pub id: u32
 }
@@ -20,10 +22,10 @@ impl Shader {
         let mut shader = Shader { id: 0 };
 
         // 1. retrieve the vertex/fragment source code from filesystem
-        let mut v_shader_file = File::open(vertex_path)
+        let mut v_shader_file = File::open(get_path_to_asset(vertex_path))
             .unwrap_or_else(|_| panic!("Failed to open {}", vertex_path));
 
-        let mut f_shader_file = File::open(fragment_path)
+        let mut f_shader_file = File::open(get_path_to_asset(fragment_path))
             .unwrap_or_else(|_| panic!("Failed to open {}", fragment_path));
 
         let mut vertex_code = String::new();

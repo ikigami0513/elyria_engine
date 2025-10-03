@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
 
+use crate::core::path::get_path_to_asset;
 use crate::glutils::texture::Texture;
 
 #[derive(Deserialize, Debug)]
@@ -39,7 +40,7 @@ pub struct Spritesheet {
 #[allow(dead_code)]
 impl Spritesheet {
     pub fn from_file(metadata_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut file = File::open(metadata_path)?;
+        let mut file = File::open(get_path_to_asset(metadata_path))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let serializer: SpritesheetSerializer = serde_json::from_str(&contents)?;

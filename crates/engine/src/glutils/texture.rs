@@ -2,6 +2,8 @@ use gl;
 use image::{self, DynamicImage, GenericImage};
 use std::os::raw::c_void;
 
+use crate::core::path::get_path_to_asset;
+
 // La structure Texture contient maintenant les dimensions de l'image.
 #[derive(Default, Clone, Debug)]
 pub struct Texture {
@@ -26,7 +28,7 @@ impl Texture {
             gl::GenTextures(1, &mut texture.id);
 
             // Charger l'image depuis le disque avec la caisse `image`
-            let img = image::open(&texture.path)
+            let img = image::open(get_path_to_asset(&texture.path))
                 .unwrap_or_else(|e| panic!("Échec du chargement de la texture à '{}': {}", texture.path, e));
 
             // Récupérer les dimensions et les stocker dans la structure
