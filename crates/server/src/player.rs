@@ -65,7 +65,6 @@ impl MessageHandler for PlayerMoveHandler {
                     transform_comp.transform.set_local_position(vec3(x, y, z));
                     player_comp.state = state;
                     player_comp.direction = direction;
-                    println!("Joueur {} déplacé à {:?}", target_player_id, transform_comp.transform.get_local_position());
                 }
                 else {
                     return;

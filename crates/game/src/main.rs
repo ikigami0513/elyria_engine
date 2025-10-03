@@ -12,6 +12,7 @@ use common::player::{Direction, State};
 use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::TransformComponent};
 
 use player::{LocalPlayerComponent, LocalPlayerSystem};
+use crate::network::handlers::distant_player_disconnected::DistantPlayerDisconnectedHandler;
 use crate::{
     gamestate::GameStateComponent, 
     network::{
@@ -89,6 +90,7 @@ async fn main() {
     network_system.handlers.insert("connected".to_string(), Box::new(ConnectedHandler));
     network_system.handlers.insert("player_moved".to_string(), Box::new(DistantPlayerMovedHandler));
     network_system.handlers.insert("new_distant_player".to_string(), Box::new(NewDistantPlayerHandler));
+    network_system.handlers.insert("player_disconnected".to_string(), Box::new(DistantPlayerDisconnectedHandler));
 
     app.systems.push(network_system);
     app.systems.push(Box::new(LocalPlayerSystem));

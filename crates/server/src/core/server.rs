@@ -33,6 +33,7 @@ impl ElyriaServer {
         println!("Client connecté depuis : {}", socket.peer_addr().unwrap());
 
         let player_id = Uuid::new_v4();
+        let player_entity_id;
 
         let (mut reader, writer) = socket.into_split();
         let writer = Arc::new(Mutex::new(writer));
@@ -46,6 +47,7 @@ impl ElyriaServer {
         {
             let mut world = self.world.lock().await;
             let player_entity = world.new_entity();
+            player_entity_id = player_entity;
 
             let transform = TransformComponent::new();
             initial_transform = transform.clone();
@@ -153,6 +155,29 @@ impl ElyriaServer {
                  }
                 Err(e) => {
                     eprintln!("Erreur de désérialisation : {}", e);
+                }
+            }
+        }
+
+        self.clients.lock().await.remove(&player_id);
+
+        {
+            let mut world = self.world.lock().await;
+            world.remove_entity(player_entity_id);
+        }
+
+        {
+            let mut disconnected_message = Message::new();
+            disconnected_message.add("action", "player_disconnected");
+            disconnected_message.add("player_id", &player_id.to_string());
+
+            if let Ok(bytes_to_broadcast) = disconnected_message.to_bytes() {
+                let clients_map =  self.clients.lock().await;
+                for client_writer in clients_map.values() {
+                    let mut w = client_writer.lock().await;
+                    if w.write_u32(bytes_to_broadcast.len() as u32).await.is_ok() {
+                        let _ = w.write_all(&bytes_to_broadcast).await;
+                    }
                 }
             }
         }
