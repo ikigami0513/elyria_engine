@@ -5,7 +5,7 @@ use engine::world::{components::{Component, TransformComponent}, entity::Entity}
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
-use crate::handler::{Handler, HandlerContext};
+use crate::handler::{MessageHandler, MessageHandlerContext};
 
 #[derive(Debug)]
 pub struct PlayerComponent {
@@ -25,8 +25,8 @@ impl Component for PlayerComponent {}
 pub struct PlayerMoveHandler;
 
 #[async_trait]
-impl Handler for PlayerMoveHandler {
-    async fn handle<'ctx>(&self, ctx: HandlerContext<'ctx>) {
+impl MessageHandler for PlayerMoveHandler {
+    async fn handle<'ctx>(&self, ctx: MessageHandlerContext<'ctx>) {
         let data = ctx.message.get_data();
 
         let target_player_id = match data.get("player_id").and_then(|s| s.parse::<Uuid>().ok()) {

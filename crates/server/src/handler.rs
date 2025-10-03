@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 #[allow(dead_code)]
-pub struct HandlerContext<'a> {
+pub struct MessageHandlerContext<'a> {
     pub message: &'a Message,
     pub world: &'a mut World,
     pub clients: &'a Mutex<HashMap<Uuid, Arc<Mutex<OwnedWriteHalf>>>>,
@@ -15,6 +15,6 @@ pub struct HandlerContext<'a> {
 }
 
 #[async_trait]
-pub trait Handler {
-    async fn handle<'ctx>(&self, ctx: HandlerContext<'ctx>);
+pub trait MessageHandler {
+    async fn handle<'ctx>(&self, ctx: MessageHandlerContext<'ctx>);
 }
