@@ -1,41 +1,8 @@
 use cgmath::{vec3, InnerSpace, Vector2, Vector3};
+use common::player::{Direction, State};
 use engine::{graphics::animation::AnimationComponent, world::{components::{Component, TransformComponent}, entity::Entity, system::System}};
 use glfw::Key;
 use uuid::Uuid;
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Direction {
-    DOWN,
-    UP,
-    RIGHT,
-    LEFT
-}
-
-impl Direction {
-    pub fn to_str(direction: Direction) -> &'static str {
-        match direction {
-            Direction::DOWN => "down",
-            Direction::UP => "up",
-            Direction::RIGHT => "right",
-            Direction::LEFT => "left",
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum State {
-    IDLE,
-    WALK
-}
-
-impl State {
-    pub fn to_str(state: State) -> &'static str {
-        match state {
-            State::IDLE => "idle",
-            State::WALK => "walk"
-        }
-    }
-}
 
 pub struct LocalPlayerComponent {
     pub speed: f32,
@@ -146,35 +113,13 @@ impl System for DistantPlayerSystem {
 
                     let max_move_this_frame = distant_player_comp.speed * ctx.time.delta_time();
 
-                    let mut new_state = distant_player_comp.state;
-                    let mut new_direction = distant_player_comp.direction;
-
                     if distance_to_target <= max_move_this_frame {
                         transform_comp.transform.set_local_position(target_pos);
                         distant_player_comp.target_position = None;
-                        new_state = State::IDLE;
                     }
                     else {
                         let movement = direction_vector.normalize() * max_move_this_frame;
                         transform_comp.transform.set_local_position(current_pos + movement);
-                        new_state = State::WALK;
-
-                        if movement.x.abs() > movement.y.abs() {
-                            new_direction = if movement.x > 0.0 { Direction::RIGHT } else { Direction::LEFT };
-                        }
-                        else {
-                            new_direction = if movement.y > 0.0 { Direction::UP } else { Direction::DOWN };
-                        }
-                    }
-
-                    if new_state != distant_player_comp.state || new_direction != distant_player_comp.direction {
-                        distant_player_comp.state = new_state;
-                        distant_player_comp.direction = new_direction;
-
-                        if let Some(animation_comp) = ctx.world.get_component_mut::<AnimationComponent>(entity) {
-                            let anim_name = format!("player_base_{}_{}", State::to_str(new_state), Direction::to_str(new_direction));
-                            animation_comp.play(&anim_name);
-                        }
                     }
                 }
             }

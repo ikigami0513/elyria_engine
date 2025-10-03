@@ -8,10 +8,27 @@ mod gamestate;
 
 use cgmath::vec3;
 use common::message::Message;
+use common::player::{Direction, State};
 use engine::{core::application::Application, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::TransformComponent};
 
 use player::{LocalPlayerComponent, LocalPlayerSystem};
-use crate::{gamestate::GameStateComponent, network::{client::Client, event::NetworkEvent, handlers::{connected_handler::ConnectedHandler, distant_player_moved::{DistantPlayerMovedHandler, NewDistantPlayerHandler}}, system::NetworkEventSystem}, player::{Direction, DistantPlayerSystem, State}, tick::TickSystem};
+use crate::{
+    gamestate::GameStateComponent, 
+    network::{
+        client::Client, 
+        event::NetworkEvent, 
+        handlers::{
+            connected_handler::ConnectedHandler, 
+            distant_player_moved::{
+                DistantPlayerMovedHandler, 
+                NewDistantPlayerHandler
+            }
+        }, 
+        system::NetworkEventSystem
+    }, 
+    player::DistantPlayerSystem, 
+    tick::TickSystem
+};
 
 use tokio::sync::mpsc;
 

@@ -17,7 +17,6 @@ use crate::core::server::ElyriaServer;
 use crate::admin::pages::show_players_page;
 
 
-
 #[tokio::main]
 async fn main() {
     let server = Arc::new(ElyriaServer::new());

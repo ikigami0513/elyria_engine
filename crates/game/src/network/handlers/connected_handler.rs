@@ -1,9 +1,9 @@
 use cgmath::Vector3;
-use common::player::PlayerInfo;
+use common::player::{Direction, State, PlayerInfo};
 use engine::{core::frame_context::FrameContext, graphics::{animation::AnimationComponent, sprite::SpriteCreator}, world::components::TransformComponent};
 use uuid::Uuid;
 
-use crate::{gamestate::GameStateComponent, network::{event::NetworkEvent, handlers::handler::Handler}, player::{Direction, DistantPlayerComponent, State}};
+use crate::{gamestate::GameStateComponent, network::{event::NetworkEvent, handlers::handler::Handler}, player::DistantPlayerComponent};
 
 pub struct ConnectedHandler;
 

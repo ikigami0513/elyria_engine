@@ -1,4 +1,5 @@
 use common::message::Message;
+use common::player::{Direction, State};
 use engine::{
     core::frame_context::FrameContext, 
     world::{
@@ -6,7 +7,7 @@ use engine::{
     }
 };
 use tokio::sync::mpsc;
-use crate::{gamestate::GameStateComponent, player::{Direction, LocalPlayerComponent, State}};
+use crate::{gamestate::GameStateComponent, player::LocalPlayerComponent};
 
 const TICK_INVERTAL: f32 = 1.0 / 20.0;
 

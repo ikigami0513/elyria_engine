@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use cgmath::vec3;
-use common::message::Message;
+use common::{message::Message, player::{Direction, State}};
 use engine::world::{components::{Component, TransformComponent}, entity::Entity};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
@@ -9,13 +9,17 @@ use crate::handler::{MessageHandler, MessageHandlerContext};
 
 #[derive(Debug)]
 pub struct PlayerComponent {
-    pub id: Uuid
+    pub id: Uuid,
+    pub direction: Direction,
+    pub state: State
 }
 
 impl PlayerComponent {
     pub fn new(id: Uuid) -> Self {
         Self {
-            id
+            id,
+            direction: Direction::DOWN,
+            state: State::IDLE
         }
     }
 }
@@ -53,10 +57,14 @@ impl MessageHandler for PlayerMoveHandler {
             let x_pos = data.get("x").and_then(|val| val.parse::<f32>().ok());
             let y_pos = data.get("y").and_then(|val| val.parse::<f32>().ok());
             let z_pos = data.get("z").and_then(|val| val.parse::<f32>().ok());
+            let state = data.get("state").and_then(|val| val.parse::<State>().ok()).unwrap();
+            let direction = data.get("direction").and_then(|val| val.parse::<Direction>().ok()).unwrap();
 
             if let (Some(x), Some(y), Some(z)) = (x_pos, y_pos, z_pos) {
-                if let Some((_player_comp, transform_comp)) = ctx.world.get_components_mut_pair::<PlayerComponent, TransformComponent>(entity) {
+                if let Some((player_comp, transform_comp)) = ctx.world.get_components_mut_pair::<PlayerComponent, TransformComponent>(entity) {
                     transform_comp.transform.set_local_position(vec3(x, y, z));
+                    player_comp.state = state;
+                    player_comp.direction = direction;
                     println!("Joueur {} déplacé à {:?}", target_player_id, transform_comp.transform.get_local_position());
                 }
                 else {
@@ -69,6 +77,8 @@ impl MessageHandler for PlayerMoveHandler {
                 broadcast_message.add("x", &x.to_string());
                 broadcast_message.add("y", &y.to_string());
                 broadcast_message.add("z", &z.to_string());
+                broadcast_message.add("direction", Direction::to_str(direction));
+                broadcast_message.add("state", State::to_str(state));
 
                 let bytes = match broadcast_message.to_bytes() {
                     Ok(b) => b,
